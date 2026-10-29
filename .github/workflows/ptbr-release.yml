@@ -1,0 +1,64 @@
+name: Publicar download direto do APK PT-BR
+on:
+  workflow_run:
+    workflows: ["APK em português brasileiro (Chromecast 4K)"]
+    types: [completed]
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publicar:
+    if: ${{ github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.head_branch == 'main' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Publicar apenas compilação compatível com o código atual
+        id: gate
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          git cat-file -e "$SOURCE_SHA^{commit}"
+          CHANGED="$(git diff --name-only "$SOURCE_SHA" HEAD | grep -v '^.github/workflows/ptbr-release.yml$' || true)"
+          if [ -n "$CHANGED" ]; then
+            echo "Uma compilação mais nova já está disponível; ignorando esta."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Baixar APK da compilação aprovada
+        if: steps.gate.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          gh run download "$RUN_ID" --repo "$GITHUB_REPOSITORY" --name CleanYourTV-PTBR-Chromecast4K-APK --dir ./dist
+          find dist -type f -name '*.apk' -print
+          APK="$(find dist -type f -name '*.apk' -print -quit)"
+          test -s "$APK"
+          cp "$APK" dist/CleanYourTV-PTBR-Chromecast4K.apk
+      - name: Publicar APK diretamente no GitHub Releases
+        if: steps.gate.outputs.publish == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          TAG="ptbr-${SOURCE_SHA:0:8}"
+          cat > dist/LEIA-ME.txt <<'TXT'
+          CleanYourTV PT-BR para celular Android, utilizado com Chromecast Google TV 4K.
+          Instale no celular, não no Chromecast.
+          A compilação utiliza assinatura de depuração, que muda entre execuções.
+          Para trocar de versão, talvez seja necessário desinstalar a anterior.
+          O perfil do Chromecast preserva o Google Cast e a tela inicial original.
+          Verifique a cobertura de idioma no relatório ptbr-cobertura.json.
+          TXT
+          gh release create "$TAG" \
+            dist/CleanYourTV-PTBR-Chromecast4K.apk \
+            dist/ptbr-cobertura.json \
+            dist/LEIA-ME.txt \
+            --repo "$GITHUB_REPOSITORY" \
+            --target "$SOURCE_SHA" \
+            --title "CleanYourTV PT-BR — Chromecast 4K (${SOURCE_SHA:0:8})" \
+            --notes "APK do aplicativo de celular em português brasileiro, compilado pelo GitHub Actions. Mantém as proteções originais do Chromecast com Google TV 4K. Esta versão usa assinatura de depuração. Confira a cobertura de tradução no arquivo de relatório."
