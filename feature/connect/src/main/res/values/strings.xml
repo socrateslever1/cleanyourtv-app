@@ -29,7 +29,7 @@
 
     <!-- S1b Which TV? -->
     <string name="picker_title">Which TV?</string>
-    <string name="picker_body">Not sure? The TV you pick will show a message on its screen in a moment.</string>
+    <string name="picker_body">Tap a TV to open the connection steps. The TV will ask for permission only when ADB debugging is enabled and reachable.</string>
     <string name="picker_row">{name}, {room} · {platform}</string>
     <string name="picker_row_noroom">{name} · {platform}</string>
     <string name="picker_name_with_suffix">{name} ...{suffix}</string>

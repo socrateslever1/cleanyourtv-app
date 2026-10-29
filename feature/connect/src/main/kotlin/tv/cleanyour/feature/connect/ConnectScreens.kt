@@ -209,7 +209,13 @@ fun PickerScreen(state: SetupState.Picker, extras: SetupExtras, actions: SetupAc
             val title = if (name in dupes) msg(R.string.picker_name_with_suffix, "name" to name, "suffix" to tv.host.substringAfterLast('.')) else name
             ChoiceOption(tv.host, title, subtitle = tv.model?.takeIf { it != name })
         }
-        ChoiceList(options, chosen?.host, { selected = it.key })
+        // Tapping a TV must open its connection steps immediately. Previously the row
+        // only highlighted the device, leaving the user on the picker with no feedback.
+        // The bottom "Use TV" action remains available for accessibility.
+        ChoiceList(options, chosen?.host, { option ->
+            selected = option.key
+            actions.intent(SetupIntent.PickTv(option.key))
+        })
         Banner(stringResource(R.string.picker_footer), BannerTone.INFO, Modifier.padding(top = 20.dp))
         InlineCard(extras, actions)
     }
