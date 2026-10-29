@@ -150,6 +150,7 @@ BY_KEY = {
 # Conserva interpolação nomeada, plurais ICU e argumentos do Android.
 FORMAT = re.compile(r"\{[A-Za-z_][A-Za-z0-9_]*\}|%(?:[0-9]+\$)?[-+# 0,(]*[0-9]*(?:\.[0-9]+)?[a-zA-Z]|\\n|\\t")
 TOKEN = re.compile(r"CZZKEEP[0-9]+ZZC")
+PREFETCH = {}
 ROOT_ARGUMENT = re.compile(r"\{([A-Za-z_]\w*)\s*(?:[,}])")
 ICU_START = re.compile(r"^\s*([A-Za-z_]\w*)\s*,\s*(plural|select|selectordinal)\s*,", re.S)
 
@@ -240,6 +241,8 @@ def translate_icu(s, tr):
     return "".join(out)
 
 def translate(s):
+    if s in PREFETCH:
+        return PREFETCH[s]
     if s in FIXED:
         return FIXED[s]
     if s.startswith("@") or s.startswith("?"):
@@ -252,6 +255,37 @@ def translate(s):
 def run(root, report_path):
     total = done = failed = 0
     modules = {}
+    # O volume de recursos exige tradução concorrente, mas limitada, para não
+    # retardar desnecessariamente a compilação do APK.
+    candidates=set()
+    for module in MODULES:
+        source=root/module/"src/main/res/values/strings.xml"
+        if not source.exists():
+            continue
+        tree=ET.parse(source)
+        for entry in tree.getroot():
+            if entry.attrib.get("translatable", "true") == "false":
+                continue
+            if entry.tag == "string":
+                key=entry.attrib.get("name")
+                raw=unescape_android("".join(entry.itertext()))
+                if key not in BY_KEY and raw not in FIXED and raw and not raw.startswith(("@","?")):
+                    candidates.add(raw)
+            elif entry.tag in ("plurals","string-array"):
+                for item in entry:
+                    raw=unescape_android("".join(item.itertext()))
+                    if raw and raw not in FIXED:
+                        candidates.add(raw)
+    print("Traduzindo " + str(len(candidates)) + " textos em paralelo...",flush=True)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=6) as pool:
+        futures={pool.submit(translate,value):value for value in candidates}
+        for future in concurrent.futures.as_completed(futures):
+            text=futures[future]
+            try:
+                PREFETCH[text]=future.result()
+            except Exception:
+                PREFETCH[text]=None
+    print("Tradução preliminar encerrada.",flush=True)
     for module in MODULES:
         src = root / module / "src/main/res/values/strings.xml"
         if not src.is_file():
