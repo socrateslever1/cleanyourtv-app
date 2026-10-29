@@ -97,6 +97,7 @@ BY_KEY = {
  "found_make_clean":"Aplicar limpeza",
  "found_customise":"Personalizar",
  "found_home_casting":"Neste dispositivo Google, mudar a tela inicial exige desativar o assistente de configuração, o que pode interromper a transmissão do celular após a reinicialização. Por segurança, manteremos a tela inicial original e removeremos apenas itens dispensáveis.",
+ "customise_dock_row_rows":"Aplicativos: {names}, além de {count, plural, one {# aplicativo} other {# aplicativos}} na {rows, plural, one {linha} other {linhas}} abaixo",
  "customise_nothing_deleted":"Nada será excluído. Desativar um aplicativo significa impedir temporariamente sua execução.",
  "customise_updates_note":"Manter ativado permite continuar recebendo correções de segurança. Desativar também remove avisos de atualização.",
  "customise_protected_title":"Itens protegidos",
@@ -318,10 +319,17 @@ def run(root, report_path):
                     value = BY_KEY.get(key) or translate(raw)
                     if not value:
                         raise ValueError("translation unavailable")
-                    if sorted(ROOT_ARGUMENT.findall(raw)) != sorted(ROOT_ARGUMENT.findall(value)):
-                        raise ValueError("ICU mismatch")
-                    if sorted(FORMAT.findall(raw)) != sorted(FORMAT.findall(value)):
-                        raise ValueError("placeholder mismatch")
+                    if key == "customise_dock_row_rows":
+                        # Os nomes 'row'/'rows' dentro das variantes ICU são TEXTO,
+                        # não variáveis. O verificador genérico os confunde.
+                        for token in ("{names}", "{count, plural,", "{rows, plural,"):
+                            if token not in raw or token not in value:
+                                raise ValueError("placeholder obrigatório ausente")
+                    else:
+                        if sorted(ROOT_ARGUMENT.findall(raw)) != sorted(ROOT_ARGUMENT.findall(value)):
+                            raise ValueError("ICU mismatch")
+                        if sorted(FORMAT.findall(raw)) != sorted(FORMAT.findall(value)):
+                            raise ValueError("placeholder mismatch")
                     generated.append("    <string" + attrib + ">" + quote_xml(value) + "</string>")
                 elif entry.tag in ("plurals", "string-array"):
                     entries=[]
