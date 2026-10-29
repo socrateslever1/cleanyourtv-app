@@ -12,6 +12,7 @@ import html
 import json
 import re
 import time
+import threading
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -151,6 +152,9 @@ BY_KEY = {
 FORMAT = re.compile(r"\{[A-Za-z_][A-Za-z0-9_]*\}|%(?:[0-9]+\$)?[-+# 0,(]*[0-9]*(?:\.[0-9]+)?[a-zA-Z]|\\n|\\t")
 TOKEN = re.compile(r"CZZKEEP[0-9]+ZZC")
 PREFETCH = {}
+NETWORK_LOCK = threading.Lock()
+NETWORK_ERRORS = 0
+NETWORK_BLOCKED = False
 ROOT_ARGUMENT = re.compile(r"\{([A-Za-z_]\w*)\s*(?:[,}])")
 ICU_START = re.compile(r"^\s*([A-Za-z_]\w*)\s*,\s*(plural|select|selectordinal)\s*,", re.S)
 
@@ -174,25 +178,29 @@ def translated_by_service(s):
         {"client":"gtx", "sl":"en", "tl":"pt", "dt":"t", "q":safe}
     )
     request = urllib.request.Request(url, headers={"User-Agent":"Mozilla/5.0 CleanYourTV-ptBR"})
-    for attempt in range(3):
-        try:
-            with urllib.request.urlopen(request, timeout=15) as reply:
-                payload = json.load(reply)
-            result = "".join(p[0] for p in payload[0] if p and p[0])
-            for idx, item in enumerate(protected):
-                marker = "CZZKEEP" + str(idx) + "ZZC"
-                result = re.sub(re.escape(marker), lambda _m, x=item: x, result, flags=re.I)
-            if TOKEN.search(result):
-                raise ValueError("marcador de variável não restituído")
-            if sorted(FORMAT.findall(result)) != sorted(FORMAT.findall(s)):
-                raise ValueError("argumentos de formatação incompatíveis")
-            if not result.strip():
-                raise ValueError("tradução vazia")
-            return result
-        except Exception:
-            if attempt < 2:
-                time.sleep((attempt + 1) * .5)
-    return None
+    global NETWORK_ERRORS, NETWORK_BLOCKED
+    if NETWORK_BLOCKED:
+        return None
+    try:
+        with urllib.request.urlopen(request, timeout=6) as reply:
+            payload = json.load(reply)
+        result = "".join(p[0] for p in payload[0] if p and p[0])
+        for idx, item in enumerate(protected):
+            marker = "CZZKEEP" + str(idx) + "ZZC"
+            result = re.sub(re.escape(marker), lambda _m, x=item: x, result, flags=re.I)
+        if TOKEN.search(result):
+            return None
+        if sorted(FORMAT.findall(result)) != sorted(FORMAT.findall(s)):
+            return None
+        if not result.strip():
+            return None
+        return result
+    except Exception:
+        with NETWORK_LOCK:
+            NETWORK_ERRORS += 1
+            if NETWORK_ERRORS >= 12:
+                NETWORK_BLOCKED = True
+        return None
 
 def matching_brace(text, i):
     depth = 0
