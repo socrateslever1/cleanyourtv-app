@@ -4,7 +4,7 @@
 
 Para instalar uma versão nova sobre outra, o Android exige simultaneamente:
 
-1. Mesmo identificador do pacote: **tv.cleanyour.app.cleaninstall** no canal personalizado;
+1. Mesmo identificador do pacote: **tv.cleanyour.app.personal** na edição estável atual; a antiga edição Debug foi distribuída com **tv.cleanyour.app.cleaninstall**;
 2. Certificado digital compatível com o certificado da versão instalada;
 3. versionCode superior ao da versão instalada.
 
@@ -73,8 +73,8 @@ silenciosa nem bypass da segurança do sistema.
    uma pasta de sua escolha no celular, de preferência com cópia fora dele.
 2. Confira no computador, via ADB USB autorizado:
    \`adb -d shell pm list packages | findstr /i cleanyour\`
-3. Se a instalação antiga for \`tv.cleanyour.app\` e a nova
-   \`tv.cleanyour.app.cleaninstall\`, as duas podem coexistir; mantenha a
+3. Se a instalação antiga for \`tv.cleanyour.app.cleaninstall\` e a nova
+   \`tv.cleanyour.app.personal\`, as duas podem coexistir; mantenha a
    antiga enquanto testa a nova e conserva o ZIP de restauração.
 4. Se as duas versões tiverem o MESMO packageName mas certificados diferentes,
    o Android recusará a atualização direta. Só depois de preservar o backup
