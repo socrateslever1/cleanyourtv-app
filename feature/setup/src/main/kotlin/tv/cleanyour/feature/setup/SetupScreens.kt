@@ -250,7 +250,7 @@ fun FoundScreen(
             rememberEmphasis(keep, apps), Modifier.padding(start = 4.dp, end = 4.dp, top = 16.dp),
             color = CytTheme.colors.textSecondary, style = CytTheme.type.bodyMedium,
         )
-        if (extras.homeBlock == HomeBlock.REMOTE_BUTTONS) {
+        if (extras.tclRemoteKeys && extras.homeBlock == HomeBlock.REMOTE_BUTTONS) {
             Banner(stringResource(R.string.found_tcl_visual_note), BannerTone.INFO, Modifier.padding(top = 16.dp))
         }
         if (extras.homePossible && summary.homeScreenPossible) {
