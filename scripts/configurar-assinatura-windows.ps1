@@ -85,6 +85,11 @@ try {
   SaveSecret "CLEAN_TV_KEY_PASSWORD" $Password
   SaveSecret "CLEAN_TV_CERT_SHA256" $Fingerprint
   Write-Host "Assinatura própria configurada. Guarde o .jks e a senha em backup offline."
+  Write-Host "Iniciando compilação de produção no GitHub Actions..."
+  & gh workflow run ptbr-apk.yml --repo $Repo --ref main
+  if ($LASTEXITCODE -ne 0) {
+    Write-Warning "Secrets configurados, mas não foi possível iniciar o build. Abra Actions > APK em português brasileiro > Run workflow."
+  }
   Write-Warning "Um APK debug antigo com certificado diferente não pode ser substituído diretamente. Exporte primeiro o backup de restauração da TV."
 } finally {
   [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($Bstr)
