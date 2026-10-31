@@ -9,8 +9,16 @@ android {
     // 0.4.6.1 is the reconnect hotfix on 0.4.6 (four parts). It takes versionCode 23 because 22 is the
     // 0.4.7-beta1 test build signed with the same key, so a phone with that build never sees a downgrade.
     defaultConfig {
-        versionCode = System.getenv("CLEAN_TV_VERSION_CODE")?.toIntOrNull() ?: 23
-        versionName = System.getenv("CLEAN_TV_VERSION_NAME") ?: "0.4.6.1"
+        // F-Droid checkupdates reads these first literal assignments.
+        // GitHub's owned signed release can override them without changing
+        // the version reported to F-Droid for normal builds.
+        versionCode = 23
+        versionName = "0.4.6.1"
+        System.getenv("CLEAN_TV_VERSION_CODE")?.toIntOrNull()
+            ?.takeIf { it in 1..2100000000 }
+            ?.let { versionCode = it }
+        System.getenv("CLEAN_TV_VERSION_NAME")?.takeIf { it.isNotBlank() }
+            ?.let { versionName = it }
     }
     // The full fork uses a distinct package identity for side-by-side migration.
     // Consistent signing remains required for future in-place updates.
