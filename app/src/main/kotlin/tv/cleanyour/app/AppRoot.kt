@@ -171,6 +171,8 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
     val scope = rememberCoroutineScope()
     var apkInstallTarget by remember { mutableStateOf<TvId?>(null) }
     var showWearInspector by remember { mutableStateOf(false) }
+    var showPhoneInspector by remember { mutableStateOf(false) }
+    var tvToolsTarget by remember { mutableStateOf<TvId?>(null) }
     if (graph.store.flavour == "full") UpdateNotifier()
 
     // 0.4.6 (REPORTING-PROPOSAL 2.2): a card's "Report a problem" (IssueRoute) opens the GitHub form
@@ -274,7 +276,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
                     val m = rememberMachine("manage:${key.tvId}") { graph.manage(it, key.tvId?.let(::TvId)) }
                     val state by m.state.collectAsStateWithLifecycle()
                     LaunchedEffect(m) { m.effects.collect { onManageEffect(it) } }
-                    ManageScreen(state, m::dispatch, onInstallApk = { apkInstallTarget = it })
+                    ManageScreen(state, m::dispatch, onInstallApk = { apkInstallTarget = it }, onTvTools = { tvToolsTarget = it })
                 }
                 entry<Dest.SwitchedOff> { key ->
                     val m = rememberMachine("off:${key.tvId}") { graph.switchedOff(it, TvId(key.tvId)) }
@@ -338,9 +340,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
                     SecureWindow(state.confirm == AppConfirm.RESET_KEY)
                     AppSettingsScreen(state, m::dispatch, onBack = { go("back") },
                         onOpenRelease = { graph.store.releasePage?.let { url -> scope.launch { onManageEffect(ManageEffect.OpenUrl(url)) } } },
-                        onOpenPhoneStorage = {
-                            runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_INTERNAL_STORAGE_SETTINGS)) }
-                        },
+                        onOpenPhoneStorage = { showPhoneInspector = true },
                         onOpenPhoneApps = {
                             runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)) }
                         },
@@ -365,6 +365,10 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
         if (reach !is Reach.Idle) DebugStepSheet(reach) { graph.access.cancelWaiting() }
         apkInstallTarget?.let { id -> TvApkInstallDialog(graph, id) { apkInstallTarget = null } }
         if (showWearInspector) WearOsReadOnlyDialog(graph) { showWearInspector = false }
+        if (showPhoneInspector) PhoneDiagnosticsDialog(context) { showPhoneInspector = false }
+        tvToolsTarget?.let { id -> TvToolsDialog(graph, id,
+            onInstallApk = { tvToolsTarget = null; apkInstallTarget = id },
+            onClose = { tvToolsTarget = null }) }
         SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(16.dp))
     }
 }

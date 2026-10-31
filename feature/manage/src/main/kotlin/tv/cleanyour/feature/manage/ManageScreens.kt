@@ -102,7 +102,7 @@ private val titleTop = Modifier.padding(top = 20.dp)
 
 // M1 Manage: the app's home once a TV exists. Nothing is more than two taps away.
 @Composable
-fun ManageScreen(state: ManageState, onIntent: (ManageIntent) -> Unit, modifier: Modifier = Modifier, onInstallApk: (TvId) -> Unit = {}) {
+fun ManageScreen(state: ManageState, onIntent: (ManageIntent) -> Unit, modifier: Modifier = Modifier, onInstallApk: (TvId) -> Unit = {}, onTvTools: (TvId) -> Unit = {}) {
     val tv = state.current
     val locale = LocalConfiguration.current.locales[0]
     ScreenScaffold(Glow.Tv, modifier, topBar = {
@@ -186,6 +186,9 @@ fun ManageScreen(state: ManageState, onIntent: (ManageIntent) -> Unit, modifier:
                 ListDivider()
                 ListRow(stringResource(R.string.manage_install_apk), subtitle = stringResource(R.string.manage_install_apk_note),
                     onClick = { onInstallApk(tv.id) })
+                ListDivider()
+                ListRow(stringResource(R.string.manage_tv_tools), subtitle = stringResource(R.string.manage_tv_tools_note),
+                    onClick = { onTvTools(tv.id) })
                 ListDivider()
                 ListRow(stringResource(R.string.manage_row_tvsettings), onClick = { onIntent(ManageIntent.Open(ManageSection.TV_SETTINGS)) })
             }

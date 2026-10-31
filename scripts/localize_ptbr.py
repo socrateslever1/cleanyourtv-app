@@ -73,6 +73,8 @@ BY_KEY = {
  "manage_row_restore":"Restauração e backup da TV",
  "manage_install_apk":"Instalar APK do celular",
  "manage_install_apk_note":"Selecione um APK confiável no celular, confira o pacote e instale pela conexão ADB autorizada.",
+ "manage_tv_tools":"Ferramentas e aplicativos recentes",
+ "manage_tv_tools_note":"Consultar tarefas recentes e comparar espaço antes e depois",
  "appsettings_wear_section":"Relógios Wear OS",
  "appsettings_wear_diagnose":"Diagnosticar relógio Wear OS",
  "appsettings_wear_diagnose_note":"Diagnóstico ADB somente leitura, sem desativar serviços de saúde, Bluetooth ou emergência.",
