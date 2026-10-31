@@ -96,6 +96,8 @@ jobs:
           echo "$BADGING" | grep -Fq "versionName='$CLEAN_TV_VERSION_NAME'"
           printf 'version=%s\nversionCode=%s\nsigning=owned\npackage=tv.cleanyour.app.cleaninstall\ncertificateSha256=%s\napkSha256=%s\nrun=%s\n' \
             "$CLEAN_TV_VERSION_NAME" "$CLEAN_TV_VERSION_CODE" "$CERT" "$(sha256sum "$APK" | cut -d' ' -f1)" "$GITHUB_RUN_NUMBER" > build-information.txt
+          # Link every signed package to the exact source revision used.
+          printf 'sourceCommit=%s\n' "$GITHUB_SHA" >> build-information.txt
           cat build-information.txt
       - name: Publicar artefato assinado e auditável
         uses: actions/upload-artifact@v4
