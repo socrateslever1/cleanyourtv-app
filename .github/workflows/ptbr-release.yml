@@ -50,7 +50,7 @@ jobs:
           cat > dist/LEIA-ME.txt <<'TXT'
           Clean-install Android instalado no celular para gerenciamento de TVs e relógios Wear OS.
           Instale no celular, não no Chromecast.
-          O status de assinatura consta em build-information.txt.
+          O status e certificado da assinatura constam em build-information.txt e apk-certificate.txt.
           Para atualizar no lugar da versão anterior, todas as compilações
           devem usar a mesma chave de assinatura Android, armazenada em
           Secrets do GitHub Actions. Sem isso, o Android exige desinstalação.
@@ -58,6 +58,15 @@ jobs:
           O perfil do Chromecast preserva o Google Cast e a tela inicial original.
           Verifique a cobertura de idioma no relatório ptbr-cobertura.json.
           TXT
+          # Sem assinatura privada permanente, uma compilação de debug não é
+          # atualizável no lugar de outra. Não promovê-la como latest/stable.
+          FLAGS=()
+          if grep -qx 'signing=debug' dist/build-information.txt; then
+            FLAGS+=(--prerelease)
+            echo "::warning::APK assinado com debug; esta versão é experimental e exige migração de assinatura."
+          else
+            grep -qx 'signing=owned' dist/build-information.txt
+          fi
           # On some forks, workflow_run gets read-only GITHUB_TOKEN, even with
           # permissions.contents=write. The optional owned PAT fixes publishing.
           gh release create "$TAG" \
@@ -65,7 +74,9 @@ jobs:
             dist/ptbr-cobertura.json \
             dist/LEIA-ME.txt \
             dist/build-information.txt \
+            dist/apk-certificate.txt \
+            "${FLAGS[@]}" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$SOURCE_SHA" \
             --title "Clean-install Android — Android, Google TV e Wear OS (r${SOURCE_RUN})" \
-            --notes "APK Android do controlador CleanYourTV, compilado no GitHub Actions e comunicado pelo verificador de atualizações no aplicativo. Instalação exige confirmação do Android. Consulte build-information.txt para o tipo de assinatura; sem uma chave persistente nos Secrets, pode ser necessário desinstalar a versão anterior."
+            --notes "APK Android do controlador CleanYourTV, compilado no GitHub Actions e comunicado pelo verificador de atualizações no aplicativo. Instalação exige confirmação do Android. Consulte build-information.txt para o tipo de assinatura; compilações debug são pré-lançamentos e NÃO garantem atualização sem desinstalar. A versão estável requer a chave permanente configurada em GitHub Actions Secrets."
