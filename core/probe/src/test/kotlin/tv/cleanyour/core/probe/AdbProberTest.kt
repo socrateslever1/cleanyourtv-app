@@ -38,6 +38,23 @@ class AdbProberTest {
         assertEquals(1, s.execLines.size)
     }
 
+    @Test fun watchIsNeverAllowedIntoTvDebloatProbe() = runBlocking<Unit> {
+        val src = ProbeFixtures.miTvRecording()
+        val session = FakeTvSession(recording = src.on(
+            ProbeScripts.FACTS.text,
+            Fixtures.miTv().getpropText + "\n" +
+                "@@cyt@@ meminfo\n" + ProbeFixtures.res("mitv/meminfo.txt") +
+                "@@cyt@@ gms\n" + ProbeFixtures.res("mitv/gms-path.txt") +
+                "\nfeature:android.hardware.type.watch\n"
+        ))
+        val error = assertFailsWith<ProbeException> {
+            prober.snapshot(session, SnapshotReason.BASELINE) {}
+        }
+        assertTrue(error.message.orEmpty().contains("Wear OS"))
+        assertEquals(listOf(ProbeScripts.FACTS.text), session.execLines)
+        assertTrue(session.calls.none { it is FakeTvSession.Call.InstallStream || it is FakeTvSession.Call.Push })
+    }
+
     // Review of beta3: a package whose flags line came back empty is told by its install path, so a
     // system app is never taken for one the person installed (HomeSwitchRisk.installedHome).
     @Test fun anEmptyFlagsLineFallsBackToTheInstallPath() = runBlocking<Unit> {
