@@ -32,7 +32,7 @@ import org.json.JSONObject
  */
 internal object AppUpdateFeed {
     const val API = "https://api.github.com/repos/socrateslever1/cleanyourtv-app/releases/latest"
-    private const val APK = "Clean-install-Android.apk"
+    private const val APK = "CleanYourTV.apk"
     private val tagPattern = Regex("""^ptbr-r([0-9]+)-[a-f0-9]{8}$""")
     private val installedPattern = Regex("""-ptbr\.r([0-9]+)$""")
 

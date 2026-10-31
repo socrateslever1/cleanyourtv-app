@@ -6,7 +6,7 @@
   screen strings live in the feature modules.
 -->
 <resources>
-    <string name="app_name" translatable="false">Clean-install Android</string>
+    <string name="app_name" translatable="false">CleanYourTV</string>
     <string name="app_channel_setup_name">Setting up a TV</string>
     <string name="app_channel_setup_description">Shows progress while the phone changes things on your TV, and tells you when to look at the TV.</string>
     <string name="app_restore_read_failed">Something went wrong reading the restore point</string>

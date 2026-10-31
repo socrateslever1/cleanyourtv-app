@@ -38,7 +38,7 @@ jobs:
           find dist -type f -name '*.apk' -print
           APK="$(find dist -type f -name '*.apk' -print -quit)"
           test -s "$APK"
-          cp "$APK" dist/Clean-install-Android.apk
+          cp "$APK" dist/CleanYourTV.apk
       - name: Publicar APK diretamente no GitHub Releases
         if: steps.gate.outputs.publish == 'true'
         env:
@@ -48,7 +48,7 @@ jobs:
           SOURCE_RUN="${{ github.event.workflow_run.run_number }}"
           TAG="ptbr-r${SOURCE_RUN}-${SOURCE_SHA:0:8}"
           cat > dist/LEIA-ME.txt <<'TXT'
-          Clean-install Android instalado no celular para gerenciamento de TVs e relógios Wear OS.
+          CleanYourTV é instalado no celular para gerenciar TVs, celulares e relógios Wear OS.
           Instale no celular, não no Chromecast.
           O status e certificado da assinatura constam em build-information.txt e apk-certificate.txt.
           Para atualizar no lugar da versão anterior, todas as compilações
@@ -70,7 +70,7 @@ jobs:
           # On some forks, workflow_run gets read-only GITHUB_TOKEN, even with
           # permissions.contents=write. The optional owned PAT fixes publishing.
           gh release create "$TAG" \
-            dist/Clean-install-Android.apk \
+            dist/CleanYourTV.apk \
             dist/ptbr-cobertura.json \
             dist/LEIA-ME.txt \
             dist/build-information.txt \
@@ -78,5 +78,5 @@ jobs:
             "${FLAGS[@]}" \
             --repo "$GITHUB_REPOSITORY" \
             --target "$SOURCE_SHA" \
-            --title "Clean-install Android — Android, Google TV e Wear OS (r${SOURCE_RUN})" \
+            --title "CleanYourTV — TV, Android e Wear OS (r${SOURCE_RUN})" \
             --notes "APK Android do controlador CleanYourTV, compilado no GitHub Actions e comunicado pelo verificador de atualizações no aplicativo. Instalação exige confirmação do Android. Consulte build-information.txt para o tipo de assinatura; compilações debug são pré-lançamentos e NÃO garantem atualização sem desinstalar. A versão estável requer a chave permanente configurada em GitHub Actions Secrets."
