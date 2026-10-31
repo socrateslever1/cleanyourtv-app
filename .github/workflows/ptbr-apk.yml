@@ -60,6 +60,9 @@ jobs:
           echo "CLEAN_TV_VERSION_NAME=1.0.0-ptbr.r$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
       # Compare approved source-language goldens before translation. Generating
       # pt-BR resources first changes every visual test with translated text.
+      # A refreshed UI baseline committed by github-actions[bot] does not trigger
+      # another workflow with GITHUB_TOKEN; owner-side updates of this workflow
+      # must rebuild the signed APK against the latest approved source revision.
       - name: Validar testes, lint e regressões visuais
         env:
           CYT_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.CLEAN_TV_KEYSTORE_PASSWORD }}
