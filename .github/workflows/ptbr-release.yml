@@ -42,7 +42,7 @@ jobs:
       - name: Publicar APK diretamente no GitHub Releases
         if: steps.gate.outputs.publish == 'true'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.CLEAN_TV_RELEASE_TOKEN || github.token }}
           SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           SOURCE_RUN="${{ github.event.workflow_run.run_number }}"
@@ -58,6 +58,8 @@ jobs:
           O perfil do Chromecast preserva o Google Cast e a tela inicial original.
           Verifique a cobertura de idioma no relatório ptbr-cobertura.json.
           TXT
+          # On some forks, workflow_run gets read-only GITHUB_TOKEN, even with
+          # permissions.contents=write. The optional owned PAT fixes publishing.
           gh release create "$TAG" \
             dist/CleanYourTV-PTBR-Chromecast4K.apk \
             dist/ptbr-cobertura.json \
