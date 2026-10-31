@@ -38,12 +38,14 @@ class Issue114PlannerTest {
         return plan.steps.mapNotNull { (it.op as? Op.Disable)?.pkg }.toSet()
     }
 
-    // The report's clean-up, from the facts alone (0.3.4 to 0.3.7): the Android TV list's.
-    @Test fun issue114FromTheFactsAloneTheAndroidTvListSwitchedOffTheRemoteKeys() {
+    // Older firmware lists requested a remote-key disable; the current global
+    // denylist must protect it even if the wrong TV profile matches.
+    @Test fun issue114FromFactsAloneProtectsRemoteKeysEvenWithWrongProfile() {
         val r = assertIs<ProfileResolution.Exact>(source.resolveNow(Issue114.snapshot().facts))
         assertEquals("tcl-65c725", r.profile.id)
         val off = switchedOff(r)
-        for (p in Issue114.keptByTheGoogleTvList) assertTrue(p in off, p.value)
+        assertFalse(PackageName("com.tcl.keyhelp") in off, "TCL remote keys must remain enabled")
+        assertTrue(PackageName("com.tcl.useragreement") in off, "The optional user agreement remains eligible")
     }
 
     @Test fun issue114WithItsHomeTheSetGetsTheTclBrandSet() = runBlocking<Unit> {

@@ -58,10 +58,8 @@ jobs:
           echo "CLEAN_TV_CERT=$PUBLIC_CERT" >> "$GITHUB_ENV"
           echo "CLEAN_TV_VERSION_CODE=$((1000000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
           echo "CLEAN_TV_VERSION_NAME=1.0.0-ptbr.r$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
-      - name: Gerar recursos pt-BR
-        run: |
-          python3 scripts/localize_ptbr.py --root . --report ptbr-cobertura.json
-          python3 -m json.tool ptbr-cobertura.json >/dev/null
+      # Compare approved source-language goldens before translation. Generating
+      # pt-BR resources first changes every visual test with translated text.
       - name: Validar testes, lint e regressões visuais
         env:
           CYT_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.CLEAN_TV_KEYSTORE_PASSWORD }}
@@ -70,6 +68,10 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew check verifyRoborazziDebug --no-daemon --console=plain
+      - name: Gerar recursos pt-BR
+        run: |
+          python3 scripts/localize_ptbr.py --root . --report ptbr-cobertura.json
+          python3 -m json.tool ptbr-cobertura.json >/dev/null
       - name: Compilar fullRelease (não depurável)
         env:
           CYT_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.CLEAN_TV_KEYSTORE_PASSWORD }}
@@ -77,7 +79,7 @@ jobs:
           CYT_RELEASE_KEY_PASSWORD: ${{ secrets.CLEAN_TV_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleFullRelease --no-daemon --stacktrace --console=plain
+          ./gradlew :app:lintFullRelease :app:assembleFullRelease --no-daemon --stacktrace --console=plain
       - name: Verificar APK, assinatura, pacote e versão
         shell: bash
         run: |
