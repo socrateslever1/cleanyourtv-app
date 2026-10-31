@@ -62,6 +62,10 @@ jobs:
         run: |
           python3 scripts/localize_ptbr.py --root . --report ptbr-cobertura.json
           python3 -m json.tool ptbr-cobertura.json >/dev/null
+      - name: Validar testes, lint e regressões visuais
+        run: |
+          chmod +x gradlew
+          ./gradlew check verifyRoborazziDebug --no-daemon --console=plain
       - name: Compilar fullRelease (não depurável)
         env:
           CYT_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.CLEAN_TV_KEYSTORE_PASSWORD }}
