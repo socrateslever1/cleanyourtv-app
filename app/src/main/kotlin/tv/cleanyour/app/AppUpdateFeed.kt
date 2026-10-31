@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -34,7 +36,7 @@ internal object AppUpdateFeed {
     private val tagPattern = Regex("""^ptbr-r([0-9]+)-[a-f0-9]{8}$""")
     private val installedPattern = Regex("""-ptbr\.r([0-9]+)$""")
 
-    data class Available(val tag: String, val url: String)
+    data class Available(val tag: String, val url: String, val sha256: String, val bytes: Long)
 
     internal fun offered(tag: String, version: String): Boolean {
         val remote = tagPattern.matchEntire(tag)?.groupValues?.get(1)?.toLongOrNull() ?: return false
@@ -70,7 +72,10 @@ internal object AppUpdateFeed {
                     || uri.rawUserInfo != null || uri.port != -1
                     || uri.rawQuery != null || uri.rawFragment != null
                     || !uri.path.startsWith("/socrateslever1/cleanyourtv-app/releases/download/$tag/")) continue
-                return@withContext Available(tag, link)
+                val digest = asset.optString("digest").removePrefix("sha256:")
+                val size = asset.optLong("size")
+                if (!digest.matches(Regex("[a-fA-F0-9]{64}")) || size !in 1..157286400) continue
+                return@withContext Available(tag, link, digest.lowercase(), size)
             }
             null
         } catch (_: Exception) {
@@ -89,6 +94,9 @@ internal object AppUpdateFeed {
 internal fun UpdateNotifier() {
     val context = LocalContext.current
     var release by remember { mutableStateOf<AppUpdateFeed.Available?>(null) }
+    var busy by remember { mutableStateOf(false) }
+    var result by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
         val prefs = context.getSharedPreferences("owned_build_updates", Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
@@ -107,22 +115,25 @@ internal fun UpdateNotifier() {
                 release = null
             },
             title = { Text(stringResource(R.string.app_update_title)) },
-            text = { Text(stringResource(R.string.app_update_body)) },
+            text = { Text(stringResource(if (busy) R.string.app_update_downloading else R.string.app_update_body)) },
             confirmButton = {
-                TextButton(onClick = {
-                    runCatching {
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(found.url))
-                            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
+                TextButton(enabled = !busy, onClick = {
+                    busy = true
+                    scope.launch {
+                        result = TvSelfUpdate.downloadAndInstall(context, found)
+                        busy = false
+                        if (result == null) {
+                            context.getSharedPreferences("owned_build_updates", Context.MODE_PRIVATE)
+                                .edit().putString("dismissed", found.tag).apply()
+                        }
+                        release = null
                     }
-                    context.getSharedPreferences("owned_build_updates", Context.MODE_PRIVATE)
-                        .edit().putString("dismissed", found.tag).apply()
-                    release = null
                 }) {
                     Text(stringResource(R.string.app_update_download))
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
+                TextButton(enabled = !busy, onClick = {
                     context.getSharedPreferences("owned_build_updates", Context.MODE_PRIVATE)
                         .edit().putString("dismissed", found.tag).apply()
                     release = null
@@ -130,6 +141,14 @@ internal fun UpdateNotifier() {
                     Text(stringResource(R.string.app_update_later))
                 }
             }
+        )
+    }
+    result?.let { err ->
+        AlertDialog(
+            onDismissRequest = { result = null },
+            title = { Text(stringResource(R.string.app_update_install_problem)) },
+            text = { Text(err) },
+            confirmButton = { TextButton(onClick = { result = null }) { Text("OK") } }
         )
     }
 }
