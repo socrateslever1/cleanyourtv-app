@@ -12,7 +12,7 @@ android {
         versionCode = System.getenv("CLEAN_TV_VERSION_CODE")?.toIntOrNull() ?: 23
         versionName = System.getenv("CLEAN_TV_VERSION_NAME") ?: "0.4.6.1"
     }
-    // STORES-PLAN 1: one codebase, two store builds, the same applicationId and signing certificate.
+    // The full fork uses a distinct package identity for side-by-side migration.\n    // Consistent signing remains required for future in-place updates.
     // `full` (GitHub and F-Droid) checks GitHub for a newer release and offers the optional add-ons;
     // `play` (Google Play) has no update check, no add-on downloads, keeps the TV's software updaters
     // on and names no GitHub host. The differences live in src/full and src/play (Store.kt and the
@@ -21,6 +21,9 @@ android {
     productFlavors {
         create("full") {
             dimension = "store"
+            // Independent identity: Clean-install can coexist with the old
+            // Clean Your TV until its restoration history is exported.
+            applicationIdSuffix = ".cleaninstall"
             isDefault = true
         }
         create("play") {
