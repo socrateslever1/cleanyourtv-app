@@ -31,23 +31,8 @@ android {
             dimension = "store"
         }
     }
-    // An owned signing key (configured as GitHub secrets) keeps updates installable.
-    // Never commit keystores or passwords to a public repository.
-    val ownedKeystore = System.getenv("CLEAN_TV_KEYSTORE_PATH")
-    val ownedStorePass = System.getenv("CLEAN_TV_KEYSTORE_PASSWORD")
-    val ownedAlias = System.getenv("CLEAN_TV_KEY_ALIAS")
-    val ownedKeyPass = System.getenv("CLEAN_TV_KEY_PASSWORD")
-    if (listOf(ownedKeystore, ownedStorePass, ownedAlias, ownedKeyPass).all { !it.isNullOrBlank() }) {
-        signingConfigs {
-            create("ownedKey") {
-                storeFile = file(requireNotNull(ownedKeystore))
-                storePassword = ownedStorePass
-                keyAlias = ownedAlias
-                keyPassword = ownedKeyPass
-            }
-        }
-        buildTypes.getByName("debug").signingConfig = signingConfigs.getByName("ownedKey")
-    }
+    // Production signatures are used exclusively by fullRelease, via CYT_RELEASE_*.
+    // The debug build intentionally retains its own disposable key.
     testOptions { unitTests { isIncludeAndroidResources = true } }
     // A text report per linted variant (build/reports/lint-results-<variant>.txt). No shared
     // textOutput: with two linted variants (fullDebug under `lint`, playDebug under `check`) their
