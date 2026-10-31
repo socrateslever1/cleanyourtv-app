@@ -66,7 +66,20 @@ internal object WearOsReadOnly {
                     val model = session.exec(ShellLine("getprop ro.product.model"), spec).stdout.trim().take(100)
                     val os = session.exec(ShellLine("getprop ro.build.version.release"), spec).stdout.trim().take(40)
                     val storage = session.exec(ShellLine("df -k /data"), spec).stdout.trim().take(350)
-                    "Wear OS identificado: $model\nBase Android: $os\nArmazenamento (KB):\n$storage\n\n" +
+                    val batteryInfo = session.exec(ShellLine("dumpsys battery"), spec)
+                    val batteryLevel = if (batteryInfo.exit == 0 && !batteryInfo.truncated) {
+                        Regex("""(?m)^\s*level:\s*(\d{1,3})\s*$""")
+                            .find(batteryInfo.stdout)?.groupValues?.get(1)?.toIntOrNull()
+                            ?.takeIf { it in 0..100 }
+                    } else null
+                    val ramInfo = session.exec(ShellLine("cat /proc/meminfo"), spec)
+                    val availableRamKb = if (ramInfo.exit == 0 && !ramInfo.truncated) {
+                        Regex("""(?m)^MemAvailable:\s+(\d+)\s+kB\b""")
+                            .find(ramInfo.stdout)?.groupValues?.get(1)?.toLongOrNull()
+                    } else null
+                    "Wear OS identificado: $model\nBase Android: $os\nArmazenamento (KB):\n$storage\n" +
+                        "Bateria: " + (batteryLevel?.let { "$it%" } ?: "indisponível") + "\n" +
+                        "RAM disponível: " + (availableRamKb?.let { "$it KiB" } ?: "indisponível") + "\n\n" +
                         "Diagnóstico somente leitura. Nenhum aplicativo ou serviço foi alterado."
                 } catch (e: Exception) {
                     "O relógio conectou, mas o diagnóstico falhou: ${e.javaClass.simpleName}. Nenhuma alteração efetuada."
