@@ -10,7 +10,8 @@ param(
 )
 $ErrorActionPreference = "Stop"
 if (-not (Test-Path -LiteralPath $Apk -PathType Leaf)) { throw "APK nao encontrado: $Apk" }
-$Adb = (Get-Command adb -ErrorAction SilentlyContinue)?.Source
+$cmd = Get-Command adb -ErrorAction SilentlyContinue
+$Adb = if ($cmd) { $cmd.Source } else { $null }
 if (-not $Adb) {
   $candidate = Join-Path (Get-Location) "adb.exe"
   if (Test-Path $candidate) { $Adb=$candidate }
