@@ -32,8 +32,9 @@ jobs:
           if grep -Ev '^feature/(manage|setup|connect)/src/test/screenshots/[^/]+\.png$' /tmp/changed-goldens.txt | grep -q . ; then
             echo 'Arquivos imprevistos no staging'; exit 1
           fi
-          # The visually reviewed CleanYourTV branding update changes at most 150
-          # snapshots. Do not accept a larger change set without a new review.
+          # Regenerate only the changed interface captures following the addition of
+          # the TV tools entry. Keep the visual assertions enabled for all builds.
+          # Refuse an unexpected large modification without owner review.
           COUNT="$(wc -l < /tmp/changed-goldens.txt)"
           echo "Capturas atualizadas: $COUNT"
           if [ "$COUNT" -gt 150 ]; then
