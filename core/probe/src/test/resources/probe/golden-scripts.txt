@@ -1,4 +1,4 @@
-FACTS	getprop; echo '@@cyt@@ meminfo'; cat /proc/meminfo; echo '@@cyt@@ gms'; pm path com.google.android.gms
+FACTS	getprop; echo '@@cyt@@ meminfo'; cat /proc/meminfo; echo '@@cyt@@ gms'; pm path com.google.android.gms; pm list features
 PACKAGES	pm list packages -f
 DISABLED	pm list packages -d
 PACKAGE_FLAGS	dumpsys package packages | grep -E '^(Packages:|Hidden system packages:)|^ +(Package \[|codePath=|versionCode=|pkgFlags=|User 0: )'
