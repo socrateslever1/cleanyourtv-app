@@ -65,8 +65,16 @@ jobs:
       - name: Checar APK gerado
         run: |
           find app/build/outputs/apk -type f -name '*.apk' -print
-          test -n "$(find app/build/outputs/apk -type f -name '*.apk' -print -quit)"
-      - name: Publicar APK assinado com chave de depuração
+          APK="$(find app/build/outputs/apk/full/debug -type f -name '*.apk' -print -quit)"
+          test -s "$APK"
+          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          test -x "$BUILD_TOOLS/apksigner"
+          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK" | tee apk-certificate.txt
+          grep -q 'Signer #1 certificate SHA-256 digest:' apk-certificate.txt
+          SHA256="$(sha256sum "$APK" | cut -d ' ' -f1)"
+          printf 'apkSha256=%s\n' "$SHA256" >> build-information.txt
+          sed -n '1,12p' build-information.txt
+      - name: Publicar APK com certificado e assinatura identificáveis
         uses: actions/upload-artifact@v4
         with:
           name: CleanYourTV-PTBR-Chromecast4K-APK
@@ -74,5 +82,6 @@ jobs:
             app/build/outputs/apk/full/debug/*.apk
             ptbr-cobertura.json
             build-information.txt
+            apk-certificate.txt
           retention-days: 30
           if-no-files-found: error
