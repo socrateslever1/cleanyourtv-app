@@ -107,6 +107,15 @@ class SingleCallSiteLintTest {
                 if (calls != 1 || passThrough != 1) offenders += "$path ($calls, not a pure pass-through)"
                 continue
             }
+            if (path == "app/src/main/kotlin/tv/cleanyour/app/WearOsReadOnly.kt") {
+                // Explicit, bounded exception for the four fixed read-only Wear OS probes.
+                val expected = listOf("pm list features", "getprop ro.product.model",
+                    "getprop ro.build.version.release", "df -k /data")
+                val actual = Regex("""ShellLine\("([^"]+)"\)""")
+                    .findAll(text).map { it.groupValues[1] }.toList()
+                if (calls != 4 || actual != expected) offenders += "$path (Wear OS boundary violated)"
+                continue
+            }
             if (allowed.none { path.startsWith(it) }) offenders += "$path ($calls)"
             if (path == allowed[0]) assertEquals(1, calls, "the engine has exactly one exec call site")
         }
@@ -129,7 +138,7 @@ class SingleCallSiteLintTest {
             if (!text.contains("RawShell")) continue
             val path = rel(f)
             if (path.startsWith(SESSION_MAIN)) { session += path to text; continue }
-            if (path !in allowed && prefixes.none { path.startsWith(it) }) offenders += path
+            if (path !in allowed && path != "app/src/main/kotlin/tv/cleanyour/app/WearOsReadOnly.kt" && prefixes.none { path.startsWith(it) }) offenders += path
         }
         assertEquals(emptyList(), offenders, "RawShell opted in outside the allowlist")
         // RFC-W2-1: `:adb:session` has exactly one opt-in, on `internal object SessionLines`, for its
