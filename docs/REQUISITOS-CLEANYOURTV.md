@@ -85,10 +85,17 @@ e futuramente smartphones e relógios Wear OS. Não alterar o applicationId exis
 | Seleção individual e proteções TCL | Código implementado; requer testes físicos |
 | Ponto de restauração e exportação ZIP | Existente; melhorar visibilidade e testar recuperação |
 | Instalador de APK por ADB | Código implementado; teste físico pendente |
-| Aviso/download interno de atualização | Código implementado; assinatura permanente ainda não configurada |
+| Aviso/download interno de atualização | Código implementado, certificado permanente confirmado na r43 |
 | Upgrade sem desinstalar | Depende de certificado persistente e migração da versão debug |
-| Apps recentes na TV | Não implementado |
-| Continuidade de reprodução universal | Não garantível; integração depende do player |
-| Otimização de celulares | Diagnóstico/atalhos iniciais, sem motor de debloat |
-| Wear OS | Diagnóstico inicial somente leitura; sem debloat |
+| Apps recentes na TV | Leitura sob demanda de tarefas via ADB, sujeita à disponibilidade do firmware; abertura exige confirmação |
+| Continuidade de reprodução universal | Não implementada; reabrir aplicativo não implica retomar posição do vídeo |
+| Otimização de celulares | Leitura local de armazenamento/RAM e orientações; sem debloat automático |
+| Wear OS | Diagnóstico de modelo, sistema, espaço, bateria e RAM por ADB previamente autorizado; sem debloat |
 | Validação CI / captura visual | Deve passar integralmente antes de promover release estável |
+
+## Funções adicionadas após a r43
+
+- Ferramentas da TV: tarefas recentes via ADB (quando o firmware permite), abertura explícita e confirmada do aplicativo selecionado, medição de armazenamento e RAM e comparação com referência salva localmente.
+- Configurações do celular: diagnóstico local não destrutivo e atalho para gerenciamento nativo de espaço.
+- Wear OS: leitura adicional de bateria e memória disponível; sem modificação do relógio.
+- Pendentes: pareamento ADB por código/TLS direto no celular, perfis de debloat Wear OS certificados e integração individual com players para retomar vídeos. As medidas comparadas não demonstram melhora causal de desempenho.
