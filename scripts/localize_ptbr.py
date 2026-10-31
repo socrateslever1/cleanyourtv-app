@@ -58,6 +58,8 @@ BY_KEY = {
  "app_update_body":"Um novo APK foi publicado no seu GitHub. Baixe e confirme a instalação neste celular. Para atualizar sem desinstalar, o Android exige que as versões tenham a mesma assinatura digital.",
  "app_update_download":"Baixar atualização",
  "app_update_later":"Depois",
+ "app_update_downloading":"Baixando e verificando o APK diretamente neste celular. A instalação será confirmada pelo Android.",
+ "app_update_install_problem":"Não foi possível instalar a atualização",
  "appsettings_phone_section":"Este celular Android",
  "appsettings_phone_storage":"Analisar armazenamento",
  "appsettings_phone_storage_detail":"Abrir as configurações do Android para verificar downloads, cache e espaço disponível.",
