@@ -58,33 +58,15 @@ class FullStoreTest {
         for (h in DownloadHosts.ALL) assertTrue(DownloadHosts.isAllowed("https://$h/x", Store.hosts), h)
     }
 
-    @Test fun theUpdateCheckAsksGithubForTheLatestRelease() = runBlocking {
-        val newer = OneAnswer(200, """{"tag_name": "v0.4.0", "name": "x"}""")
-        assertEquals("0.4.0", Store.updateChecker(newer).latestNewerThan("0.3.0"))
+    @Test fun customUpdateChecksOwnedRepositoryAndWonTOfferDowngrades() = runBlocking {
+        val newer = OneAnswer(200, """{"tag_name":"ptbr-r125-aabbccdd"}""")
+        assertEquals("ptbr-r125-aabbccdd", Store.updateChecker(newer).latestNewerThan("0.4.6.1-ptbr.r124"))
         assertEquals(listOf(Store.RELEASES_URL), newer.urls)
-        assertEquals("", Store.updateChecker(OneAnswer(200, """{"tag_name":"v0.3.0"}""")).latestNewerThan("0.3.0"))
-        assertEquals(null, Store.updateChecker(OneAnswer(404, "")).latestNewerThan("0.3.0"))
-        assertEquals("https://github.com/udhaykumarbala/cleanyourtv-app/releases", Store.releasePage)
-    }
-
-    // Test build: 0.3.5-test1 is offered 0.3.5 and later, never the 0.3.4 it installs over.
-    @Test fun aTestBuildIsOfferedOnlyANewerRelease() = runBlocking {
-        fun latest(tag: String, current: String) = runBlocking { Store.updateChecker(OneAnswer(200, "{\"tag_name\":\"v$tag\"}")).latestNewerThan(current) }
-        assertEquals("", latest("0.3.4", "0.3.5-test1"))
-        assertEquals("0.3.5", latest("0.3.5", "0.3.5-test1"))
-        assertEquals("0.4.0", latest("0.4.0", "0.3.5-test1"))
-        assertEquals("0.3.4", latest("0.3.4", "0.3.3"))
-    }
-
-    // A four-part hotfix (0.4.6.1): 0.4.6 is offered it; the 0.4.7-beta1 test build, already past it, is not.
-    @Test fun aFourPartHotfixIsOfferedToTheReleaseBeforeItOnly() = runBlocking {
-        fun latest(tag: String, current: String) = runBlocking { Store.updateChecker(OneAnswer(200, "{\"tag_name\":\"v$tag\"}")).latestNewerThan(current) }
-        assertTrue(Store.offered("0.4.6.1", "0.4.6"))
-        assertFalse(Store.offered("0.4.6.1", "0.4.7-beta1"))
-        assertFalse(Store.offered("0.4.6.1", "0.4.6.1"))
-        assertTrue(Store.offered("0.4.7", "0.4.7-beta1"))
-        assertEquals("0.4.6.1", latest("0.4.6.1", "0.4.6"))
-        assertEquals("", latest("0.4.6.1", "0.4.7-beta1"))
+        assertEquals("", Store.updateChecker(OneAnswer(200, """{"tag_name":"ptbr-r124-aabbccdd"}""")).latestNewerThan("0.4.6.1-ptbr.r124"))
+        assertEquals("", Store.updateChecker(OneAnswer(200, """{"tag_name":"v0.4.7"}""")).latestNewerThan("0.4.6.1-ptbr.r124"))
+        assertEquals(null, Store.updateChecker(OneAnswer(404, "")).latestNewerThan("0.4.6.1-ptbr.r124"))
+        assertEquals("https://github.com/socrateslever1/cleanyourtv-app/releases", Store.releasePage)
+        assertFalse(Store.offered("ptbr-r123-aabbccdd", "0.4.6.1-ptbr.r124"))
     }
 
     @Test fun softwareUpdatesStayTheOwnersChoice() {

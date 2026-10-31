@@ -31,6 +31,28 @@ jobs:
           java-version: '21'
       - name: Preparar Gradle
         uses: gradle/actions/setup-gradle@v4
+      - name: Identificar versão e configurar assinatura persistente
+        env:
+          KEYSTORE_BASE64: ${{ secrets.CLEAN_TV_KEYSTORE_B64 }}
+          STORE_PASS: ${{ secrets.CLEAN_TV_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.CLEAN_TV_KEY_ALIAS }}
+          KEY_PASS: ${{ secrets.CLEAN_TV_KEY_PASSWORD }}
+        run: |
+          echo "CLEAN_TV_VERSION_CODE=$((23000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "CLEAN_TV_VERSION_NAME=0.4.6.1-ptbr.r${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
+          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASS" ]; then
+            mkdir -p "$RUNNER_TEMP/owned-signing"
+            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/owned-signing/clean-your-tv.jks"
+            chmod 600 "$RUNNER_TEMP/owned-signing/clean-your-tv.jks"
+            echo "CLEAN_TV_KEYSTORE_PATH=$RUNNER_TEMP/owned-signing/clean-your-tv.jks" >> "$GITHUB_ENV"
+            echo "CLEAN_TV_KEYSTORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
+            echo "CLEAN_TV_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "CLEAN_TV_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
+            echo "CLEAN_TV_SIGNING=owned" >> "$GITHUB_ENV"
+          else
+            echo "::warning::Missing owned signing secrets: this APK uses a temporary debug key and cannot reliably update in place."
+            echo "CLEAN_TV_SIGNING=debug" >> "$GITHUB_ENV"
+          fi
       - name: Gerar localização pt-BR e verificar argumentos
         run: |
           python3 scripts/localize_ptbr.py --root . --report ptbr-cobertura.json
@@ -39,6 +61,7 @@ jobs:
         run: |
           chmod +x gradlew
           ./gradlew :app:assembleFullDebug --no-daemon --stacktrace --console=plain
+          printf 'version=%s\nversionCode=%s\nsigning=%s\nrun=%s\n' "$CLEAN_TV_VERSION_NAME" "$CLEAN_TV_VERSION_CODE" "$CLEAN_TV_SIGNING" "$GITHUB_RUN_NUMBER" > build-information.txt
       - name: Checar APK gerado
         run: |
           find app/build/outputs/apk -type f -name '*.apk' -print
@@ -50,5 +73,6 @@ jobs:
           path: |
             app/build/outputs/apk/full/debug/*.apk
             ptbr-cobertura.json
+            build-information.txt
           retention-days: 30
           if-no-files-found: error

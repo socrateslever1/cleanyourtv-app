@@ -9,8 +9,8 @@ android {
     // 0.4.6.1 is the reconnect hotfix on 0.4.6 (four parts). It takes versionCode 23 because 22 is the
     // 0.4.7-beta1 test build signed with the same key, so a phone with that build never sees a downgrade.
     defaultConfig {
-        versionCode = 23
-        versionName = "0.4.6.1"
+        versionCode = System.getenv("CLEAN_TV_VERSION_CODE")?.toIntOrNull() ?: 23
+        versionName = System.getenv("CLEAN_TV_VERSION_NAME") ?: "0.4.6.1"
     }
     // STORES-PLAN 1: one codebase, two store builds, the same applicationId and signing certificate.
     // `full` (GitHub and F-Droid) checks GitHub for a newer release and offers the optional add-ons;
@@ -26,6 +26,23 @@ android {
         create("play") {
             dimension = "store"
         }
+    }
+    // An owned signing key (configured as GitHub secrets) keeps updates installable.
+    // Never commit keystores or passwords to a public repository.
+    val ownedKeystore = System.getenv("CLEAN_TV_KEYSTORE_PATH")
+    val ownedStorePass = System.getenv("CLEAN_TV_KEYSTORE_PASSWORD")
+    val ownedAlias = System.getenv("CLEAN_TV_KEY_ALIAS")
+    val ownedKeyPass = System.getenv("CLEAN_TV_KEY_PASSWORD")
+    if (listOf(ownedKeystore, ownedStorePass, ownedAlias, ownedKeyPass).all { !it.isNullOrBlank() }) {
+        signingConfigs {
+            create("ownedKey") {
+                storeFile = file(requireNotNull(ownedKeystore))
+                storePassword = ownedStorePass
+                keyAlias = ownedAlias
+                keyPassword = ownedKeyPass
+            }
+        }
+        buildTypes.getByName("debug").signingConfig = signingConfigs.getByName("ownedKey")
     }
     testOptions { unitTests { isIncludeAndroidResources = true } }
     // A text report per linted variant (build/reports/lint-results-<variant>.txt). No shared

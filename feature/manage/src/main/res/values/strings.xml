@@ -147,6 +147,11 @@
     <string name="appsettings_key_strongbox">Kept in a dedicated security chip (StrongBox).</string>
     <string name="appsettings_key_tee">Kept in the phone\'s secure hardware (TEE).</string>
     <string name="appsettings_key_wrapped">Kept in software, wrapped with a key from the phone\'s secure storage. This phone can\'t hold it in hardware.</string>
+    <string name="appsettings_phone_section">This Android phone</string>
+    <string name="appsettings_phone_storage">Review storage</string>
+    <string name="appsettings_phone_storage_detail">Open Android storage settings and review downloads, cache and available space.</string>
+    <string name="appsettings_phone_apps">Manage phone apps</string>
+    <string name="appsettings_phone_apps_detail">Open Android app settings to uninstall or restrict unused apps. Critical services stay protected.</string>
     <string name="appsettings_check_updates">Check for updates</string>
     <string name="appsettings_checking">Checking...</string>
     <string name="appsettings_update_available">{version} is available</string>

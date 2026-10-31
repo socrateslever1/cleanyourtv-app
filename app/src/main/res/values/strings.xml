@@ -10,4 +10,8 @@
     <string name="app_channel_setup_name">Setting up a TV</string>
     <string name="app_channel_setup_description">Shows progress while the phone changes things on your TV, and tells you when to look at the TV.</string>
     <string name="app_restore_read_failed">Something went wrong reading the restore point</string>
+    <string name="app_update_title">A new version is ready</string>
+    <string name="app_update_body">A new APK has been published to your GitHub. Download it and confirm installation on this phone. Android requires the same signing key to update an existing app; otherwise it must first be uninstalled.</string>
+    <string name="app_update_download">Download update</string>
+    <string name="app_update_later">Later</string>
 </resources>

@@ -169,6 +169,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
     val context = LocalContext.current
     val view = LocalView.current
     val scope = rememberCoroutineScope()
+    if (graph.store.flavour == "full") UpdateNotifier()
 
     // 0.4.6 (REPORTING-PROPOSAL 2.2): a card's "Report a problem" (IssueRoute) opens the GitHub form
     // at once, with the report in the link and the card filled in. The whole report is copied too, as
@@ -334,7 +335,13 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
                     LaunchedEffect(m) { m.effects.collect { onManageEffect(it) } }
                     SecureWindow(state.confirm == AppConfirm.RESET_KEY)
                     AppSettingsScreen(state, m::dispatch, onBack = { go("back") },
-                        onOpenRelease = { graph.store.releasePage?.let { url -> scope.launch { onManageEffect(ManageEffect.OpenUrl(url)) } } })
+                        onOpenRelease = { graph.store.releasePage?.let { url -> scope.launch { onManageEffect(ManageEffect.OpenUrl(url)) } } },
+                        onOpenPhoneStorage = {
+                            runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_INTERNAL_STORAGE_SETTINGS)) }
+                        },
+                        onOpenPhoneApps = {
+                            runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)) }
+                        })
                 }
             },
         )

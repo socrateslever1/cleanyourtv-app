@@ -54,6 +54,15 @@ FIXED = {
 }
 BY_KEY = {
  "app_channel_setup_name":"Configurando uma TV",
+ "app_update_title":"Nova versão disponível",
+ "app_update_body":"Um novo APK foi publicado no seu GitHub. Baixe e confirme a instalação neste celular. Para atualizar sem desinstalar, o Android exige que as versões tenham a mesma assinatura digital.",
+ "app_update_download":"Baixar atualização",
+ "app_update_later":"Depois",
+ "appsettings_phone_section":"Este celular Android",
+ "appsettings_phone_storage":"Analisar armazenamento",
+ "appsettings_phone_storage_detail":"Abrir as configurações do Android para verificar downloads, cache e espaço disponível.",
+ "appsettings_phone_apps":"Gerenciar aplicativos",
+ "appsettings_phone_apps_detail":"Abrir os aplicativos do Android para desinstalar ou restringir os não utilizados, preservando os serviços críticos.",
  "app_channel_setup_description":"Mostra o andamento das alterações feitas na TV e avisa quando você precisa olhar para ela.",
  "app_restore_read_failed":"Não foi possível ler o ponto de restauração.",
  "welcome_title":"Sua TV, mais organizada.",
