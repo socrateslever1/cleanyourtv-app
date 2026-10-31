@@ -112,6 +112,9 @@ object HomeSwitchRisk {
            journals: List<ChangeRecord> = emptyList(), patchWallGoesOff: Boolean = false): Risk? = when {
         isMokaFamily(facts) || profile?.id in MOKA_PROFILES -> Risk.BOOT_LOOP
         isGoogleHardware(facts) || profile?.id in CASTING_PROFILES -> Risk.CASTING
+        // TCL Google TV routes physical Settings and dedicated app keys through
+        // launcherx on affected firmware; preserve the original HOME across models.
+        TclGoogleTv.applies(facts, snapshot) -> Risk.REMOTE_BUTTONS
         profile?.id in REMOTE_BUTTON_PROFILES -> Risk.REMOTE_BUTTONS
         // beta4: a FallbackHome R0 does not take (r0Placeholder) holds the switch back on every path.
         vendorPlaceholderClaims(snapshot) -> Risk.VENDOR_HOME

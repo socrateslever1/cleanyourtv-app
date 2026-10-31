@@ -237,10 +237,11 @@ fun FoundScreen(
             // 0.3.2 B1: careful mode invites the person to help, next to the sentence that explains it.
             TertiaryButton(stringResource(R.string.found_help_add_tv), onHelpAddTv)
         }
-        PlanSummaryCard(
-            summary.groups.filter { it.off > 0 }.map { SummaryGroup(it.id, it.title, it.off) },
-            stringResource(R.string.found_see_list), { actions.intent(SetupIntent.Open(Sheet.LIST)) }, Modifier.padding(top = 20.dp),
-        )
+        // Inline, reversible per-package selection. Previously this was hidden behind
+        // two taps: "See the list" and then a modal sheet. Nothing is applied here.
+        SelectivePlan(state, actions)
+        TertiaryButton(stringResource(R.string.found_advanced_details),
+            { actions.intent(SetupIntent.Open(Sheet.CUSTOMISE)) })
         val fixed = stringResource(R.string.found_keep_fixed)
         val apps = summary.keepNames.joinToString(", ")
         val keep = if (summary.keepNames.isEmpty()) msg(R.string.found_keep_paragraph_no_apps, "fixed" to fixed)
@@ -249,6 +250,9 @@ fun FoundScreen(
             rememberEmphasis(keep, apps), Modifier.padding(start = 4.dp, end = 4.dp, top = 16.dp),
             color = CytTheme.colors.textSecondary, style = CytTheme.type.bodyMedium,
         )
+        if (extras.homeBlock == HomeBlock.REMOTE_BUTTONS) {
+            Banner(stringResource(R.string.found_tcl_visual_note), BannerTone.INFO, Modifier.padding(top = 16.dp))
+        }
         if (extras.homePossible && summary.homeScreenPossible) {
             // The dock's apps by name, and how many more sit in the rows under it.
             val all = summary.dock.ifEmpty { extras.dock.map { it.name } }
@@ -297,6 +301,62 @@ fun FoundScreen(
         Sheet.THEME -> ThemeSheet(extras, actions, photos)
         else -> {}
     }
+}
+
+// Main review: show groups as cards, expand individual packages, and let the owner
+// override each optional choice. Protected rows are read-only in the advanced sheet;
+// no change takes effect before "Apply cleanup" creates a restore point.
+@Composable
+private fun SelectivePlan(state: SetupState.Found, actions: SetupActions) {
+    val allGroups = state.plan.summary.groups
+    val groups = allGroups.map { g -> g.copy(rows = g.rows.filterNot { it.protected }) }
+        .filter { it.rows.isNotEmpty() }
+    val protectedCount = allGroups.sumOf { g -> g.rows.count { it.protected && !it.off } }
+    var open by rememberSaveable { mutableStateOf(listOfNotNull(groups.firstOrNull()?.id)) }
+    Overline(stringResource(R.string.found_review_title), Modifier.padding(start = 4.dp, top = 24.dp))
+    Body(stringResource(R.string.found_review_explanation),
+        Modifier.padding(start = 4.dp, top = 8.dp, bottom = 8.dp))
+    for (g in groups) key(g.id) {
+        val display = g.copy(title = localGroupTitle(g))
+        if (g.id in open) {
+            GroupSection(display, custom = true, onCollapse = { open = open - g.id }) { row ->
+                // SetupIntent.Keep replans from the current draft; no ADB command runs
+                // until the separate, authenticated "Apply cleanup" action.
+                actions.intent(SetupIntent.Keep(row.pkg, keep = row.off))
+            }
+        } else {
+            CollapsedGroupsCard(
+                listOf(DiffGroup(g.id, localGroupTitle(g), g.rows.map { it.toItem() })),
+                { open = open + it.key }, Modifier.padding(top = 10.dp),
+            )
+        }
+    }
+    if (protectedCount > 0) {
+        ListGroup(Modifier.padding(top = 14.dp), tone = GroupTone.RAISED) {
+            ListRow(stringResource(R.string.found_protected_title),
+                subtitle = stringResource(R.string.found_protected_subtitle),
+                value = protectedCount.toString(),
+                onClick = { actions.intent(SetupIntent.Open(Sheet.CUSTOMISE)) })
+        }
+    }
+}
+
+@Composable
+private fun localGroupTitle(group: GroupSummary): String = when (group.id.substringBefore("-optional")) {
+    "ads" -> stringResource(R.string.found_group_ads)
+    "tracking" -> stringResource(R.string.found_group_tracking)
+    "preloads" -> stringResource(R.string.found_group_nobody)
+    "brand" -> stringResource(R.string.found_group_brand_generic)
+    "demo" -> stringResource(R.string.found_group_shop)
+    "other" -> stringResource(R.string.found_group_other)
+    "streaming" -> stringResource(R.string.customise_group_streaming)
+    "voice" -> stringResource(R.string.customise_group_voice)
+    "casting" -> stringResource(R.string.customise_group_cast)
+    "updates" -> stringResource(R.string.customise_group_updates)
+    "screensaver" -> stringResource(R.string.found_group_screensaver)
+    "accessibility" -> stringResource(R.string.found_group_accessibility)
+    "home" -> stringResource(R.string.found_group_needed)
+    else -> group.title
 }
 
 // S3a See the list / Customise (D2, D3, D21, D22): a modal sheet that scrolls, with its own undo
@@ -355,13 +415,13 @@ internal fun ColumnScope.CustomiseContent(
     for (seg in segments) key(seg.first().id) {
         val g = seg.first()
         if (g.id in open) {
-            GroupSection(g, custom, onCollapse = { open = open - g.id }) { row ->
+            GroupSection(g.copy(title = localGroupTitle(g)), custom, onCollapse = { open = open - g.id }) { row ->
                 actions.intent(SetupIntent.Keep(row.pkg, keep = row.off))
                 val text = android.icu.text.MessageFormat(if (row.off) keptText else offText, locale).format(mapOf("name" to row.friendlyName))
                 undo.show(text) { actions.intent(SetupIntent.Keep(row.pkg, keep = !row.off)) }
             }
         } else {
-            CollapsedGroupsCard(seg.map { c -> DiffGroup(c.id, c.title, c.rows.map { it.toItem() }) }, { open = open + it.key }, Modifier.padding(top = 10.dp))
+            CollapsedGroupsCard(seg.map { c -> DiffGroup(c.id, localGroupTitle(c), c.rows.map { it.toItem() }) }, { open = open + it.key }, Modifier.padding(top = 10.dp))
         }
     }
     if (protectedRows.isNotEmpty()) {

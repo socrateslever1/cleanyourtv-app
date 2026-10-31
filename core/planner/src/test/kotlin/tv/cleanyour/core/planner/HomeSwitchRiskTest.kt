@@ -117,6 +117,19 @@ class HomeSwitchRiskTest {
         assertTrue(HomeSwitchRisk.of(vu31, exact(vu31), withFacts(vu31), WizardWifi.NOT_OWNER) != Risk.REMOTE_BUTTONS)
     }
 
+    @Test fun tclGoogleTvKeepsStockHomeAndDedicatedRemoteButtons() {
+        val f = facts("G10", "TCL", "TCL", sdk = 31)
+        val stock = PackageName("com.google.android.apps.tv.launcherx")
+        val withStock = withFacts(f).let { s ->
+            s.copy(packages = s.packages + (stock to s.packages.values.first()))
+        }
+        assertTrue(TclGoogleTv.applies(f, withStock))
+        for (wifi in WizardWifi.entries) {
+            assertEquals(Risk.REMOTE_BUTTONS, HomeSwitchRisk.of(f, null, withStock, wifi))
+        }
+        assertTrue(!TclGoogleTv.applies(f.copy(brand = "Acme", manufacturer = "Acme"), withStock))
+    }
+
     // (c) The MOKA family: the wizard comes back at boot and the set can boot-loop. The three shipped
     // profiles, and a set of the family that no profile matches (an Android update, another brand
     // build of the same device), get no switch; the Philips R8G, also made by MOKA, does.

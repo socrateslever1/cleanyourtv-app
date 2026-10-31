@@ -58,6 +58,22 @@ object Denylist {
         "com.heytap.tv.remotediagnosing" to "it is part of the remote control service",
         "mitv.service" to "it runs the Xiaomi TV's remote keys and TV services; Settings can stop working without it",
         "com.tcl.channelplus" to "it provides TCL Live's channels, a TV input",
+        // TCL Google TV: essential firmware, hardware, remote, source selection and OTA
+        // components consolidated from the shipped G05/G10 profiles. Conservative
+        // across TCL firmware variants: never sacrifice working keys or updates.
+        "com.tcl.tv" to "it provides TCL live TV and its input",
+        "com.tcl.tvinput" to "it routes TCL TV inputs",
+        "com.tcl.settings" to "it provides TCL settings",
+        "com.tcl.system.server" to "it serves core TCL firmware functions",
+        "com.tcl.systemserver" to "it serves core TCL firmware functions",
+        "com.tcl.keyhelp" to "it handles TCL remote-control keys",
+        "com.tcl.autopair" to "it pairs TCL remote-control devices",
+        "com.tcl.tcl_bt_rcu_service" to "it manages the TCL Bluetooth remote",
+        "com.tcl.providers.config" to "it provides TCL device configuration",
+        "com.tcl.dashboard" to "it provides TCL quick settings and dashboard",
+        "com.tcl.suspension" to "it provides TCL quick controls and overlays",
+        "com.tcl.UpdatePeripheral" to "it updates firmware for TCL peripherals",
+        "com.tcl.ttvs" to "it is a TCL firmware service whose role varies by model",
     ) + vendorSetupWizards.associateWith { REASON_VENDOR_WIZARD } + vendorHomes.associateWith { REASON_VENDOR_HOME }
 
     val prefixes: Map<String, String> = linkedMapOf(
