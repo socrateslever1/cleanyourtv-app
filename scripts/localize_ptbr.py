@@ -148,7 +148,7 @@ BY_KEY = {
  "working_stopping":"Interrompendo e desfazendo as alterações…",
  "done_title":"Sua TV está pronta",
  "done_title_nothing":"Nenhuma alteração foi realizada",
- "manage_title":"Clean Your TV",
+ "manage_title":"CleanYourTV",
  "manage_state_clean":"Otimizado",
  "manage_state_original":"Original",
  "manage_clean_again":"Executar limpeza novamente",
