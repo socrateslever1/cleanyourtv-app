@@ -91,10 +91,15 @@ jobs:
           CERT="$(sed -nE 's/^.*certificate SHA-256 digest: ([[:xdigit:]]{64}).*$/\1/p' apk-certificate.txt | head -1 | tr '[:upper:]' '[:lower:]')"
           [ -n "$CERT" ] && [ "$CERT" = "$CLEAN_TV_CERT" ] || { echo "::error::Certificado no APK inválido"; exit 1; }
           BADGING="$("$TOOLS/aapt" dump badging "$APK")"
-          echo "$BADGING" | grep -Fq "package: name='tv.cleanyour.app.cleaninstall'"
+          echo "$BADGING" | grep -Fq "package: name='tv.cleanyour.app.personal'"
           echo "$BADGING" | grep -Fq "versionCode='$CLEAN_TV_VERSION_CODE'"
           echo "$BADGING" | grep -Fq "versionName='$CLEAN_TV_VERSION_NAME'"
-          printf 'version=%s\nversionCode=%s\nsigning=owned\npackage=tv.cleanyour.app.cleaninstall\ncertificateSha256=%s\napkSha256=%s\nrun=%s\n' \
+          # Prevent accidental collision with the previous debug-signed app.
+          if echo "$BADGING" | grep -Fq "package: name='tv.cleanyour.app.cleaninstall'"; then
+            echo "::error::O APK mantém a identidade da versão debug e não instalará lado a lado."
+            exit 1
+          fi
+          printf 'version=%s\nversionCode=%s\nsigning=owned\npackage=tv.cleanyour.app.personal\ncertificateSha256=%s\napkSha256=%s\nrun=%s\n' \
             "$CLEAN_TV_VERSION_NAME" "$CLEAN_TV_VERSION_CODE" "$CERT" "$(sha256sum "$APK" | cut -d' ' -f1)" "$GITHUB_RUN_NUMBER" > build-information.txt
           # Link every signed package to the exact source revision used.
           printf 'sourceCommit=%s\n' "$GITHUB_SHA" >> build-information.txt

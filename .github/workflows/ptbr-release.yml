@@ -52,6 +52,9 @@ jobs:
           cat > dist/LEIA-ME.txt <<'TXT'
           CleanYourTV é instalado no celular e gerencia dispositivos Android compatíveis.
           Instale no celular, não no Chromecast.
+          Esta edição permanente usa o pacote tv.cleanyour.app.personal para
+          coexistir com a edição anterior assinada com chave Android Debug.
+          Os dados da edição antiga não migram automaticamente entre pacotes.
           O status e certificado da assinatura constam em build-information.txt e apk-certificate.txt.
           Para atualizar no lugar da versão anterior, todas as compilações
           devem usar a mesma chave de assinatura Android, armazenada em
@@ -63,7 +66,7 @@ jobs:
           # Nunca publicar build debug ou assinatura diferente da identidade
           # fixada pelo proprietário. Impede oferecer update que Android recusaria.
           grep -qx 'signing=owned' dist/build-information.txt
-          grep -qx 'package=tv.cleanyour.app.cleaninstall' dist/build-information.txt
+          grep -qx 'package=tv.cleanyour.app.personal' dist/build-information.txt
           EXPECTED_CERT="$(printf '%s' "$EXPECTED_CERT" | tr '[:upper:]' '[:lower:]')"
           test -n "$EXPECTED_CERT"
           grep -qx "certificateSha256=$EXPECTED_CERT" dist/build-information.txt
@@ -83,4 +86,4 @@ jobs:
             --repo "$GITHUB_REPOSITORY" \
             --target "$SOURCE_SHA" \
             --title "CleanYourTV — TV, Android e Wear OS (r${SOURCE_RUN})" \
-            --notes "APK Android do controlador CleanYourTV, compilado no GitHub Actions e comunicado pelo verificador de atualizações no aplicativo. Instalação exige confirmação do Android. Consulte build-information.txt para o tipo de assinatura; build de produção assinado com a chave permanente do proprietário e SHA-256 verificado. Instalação exige consentimento explícito do Android."
+            --notes "Edição assinada permanente do CleanYourTV, instalada ao lado de edições antigas Debug com dados separados. APK Android do controlador CleanYourTV, compilado no GitHub Actions e comunicado pelo verificador de atualizações no aplicativo. Instalação exige confirmação do Android. Consulte build-information.txt para o tipo de assinatura; build de produção assinado com a chave permanente do proprietário e SHA-256 verificado. Instalação exige consentimento explícito do Android."

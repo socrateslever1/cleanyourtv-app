@@ -32,7 +32,12 @@ android {
             dimension = "store"
             // Independent identity: Clean-install can coexist with the old
             // Clean Your TV until its restoration history is exported.
-            applicationIdSuffix = ".cleaninstall"
+            // The historical .cleaninstall APKs were distributed with Android
+            // debug certificates. They cannot be upgraded with the owner's
+            // permanent release key. A new stable package identity permits a
+            // side-by-side installation without erasing the old app's data.
+            // Never rotate this suffix or the signing key on subsequent builds.
+            applicationIdSuffix = ".personal"
             isDefault = true
         }
         create("play") {
