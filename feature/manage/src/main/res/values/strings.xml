@@ -150,6 +150,9 @@
     <string name="appsettings_key_strongbox">Kept in a dedicated security chip (StrongBox).</string>
     <string name="appsettings_key_tee">Kept in the phone\'s secure hardware (TEE).</string>
     <string name="appsettings_key_wrapped">Kept in software, wrapped with a key from the phone\'s secure storage. This phone can\'t hold it in hardware.</string>
+    <string name="appsettings_wear_section">Wear OS watches</string>
+    <string name="appsettings_wear_diagnose">Inspect Wear OS watch</string>
+    <string name="appsettings_wear_diagnose_note">Read-only ADB diagnostics. This does not disable watch services or change health, Bluetooth or emergency functions.</string>
     <string name="appsettings_phone_section">This Android phone</string>
     <string name="appsettings_phone_storage">Review storage</string>
     <string name="appsettings_phone_storage_detail">Open Android storage settings and review downloads, cache and available space.</string>

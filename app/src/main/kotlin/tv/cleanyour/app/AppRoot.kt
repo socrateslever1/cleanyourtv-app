@@ -170,6 +170,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
     val view = LocalView.current
     val scope = rememberCoroutineScope()
     var apkInstallTarget by remember { mutableStateOf<TvId?>(null) }
+    var showWearInspector by remember { mutableStateOf(false) }
     if (graph.store.flavour == "full") UpdateNotifier()
 
     // 0.4.6 (REPORTING-PROPOSAL 2.2): a card's "Report a problem" (IssueRoute) opens the GitHub form
@@ -342,7 +343,8 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
                         },
                         onOpenPhoneApps = {
                             runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)) }
-                        })
+                        },
+                        onInspectWear = { showWearInspector = true })
                 }
             },
         )
@@ -362,6 +364,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
         val reach by graph.access.reach.collectAsStateWithLifecycle()
         if (reach !is Reach.Idle) DebugStepSheet(reach) { graph.access.cancelWaiting() }
         apkInstallTarget?.let { id -> TvApkInstallDialog(graph, id) { apkInstallTarget = null } }
+        if (showWearInspector) WearOsReadOnlyDialog(graph) { showWearInspector = false }
         SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(16.dp))
     }
 }

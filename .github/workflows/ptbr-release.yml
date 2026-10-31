@@ -67,5 +67,5 @@ jobs:
             dist/build-information.txt \
             --repo "$GITHUB_REPOSITORY" \
             --target "$SOURCE_SHA" \
-            --title "CleanYourTV PT-BR — Android e Google TV (r${SOURCE_RUN})" \
+            --title "Clean-install Android — Android, Google TV e Wear OS (r${SOURCE_RUN})" \
             --notes "APK Android do controlador CleanYourTV, compilado no GitHub Actions e comunicado pelo verificador de atualizações no aplicativo. Instalação exige confirmação do Android. Consulte build-information.txt para o tipo de assinatura; sem uma chave persistente nos Secrets, pode ser necessário desinstalar a versão anterior."

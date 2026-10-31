@@ -79,6 +79,11 @@ class AdbProber(
     override suspend fun facts(session: TvSession): DeviceFacts {
         val r = run(session, ProbeScripts.FACTS, ProbeStage.FACTS, 512 * 1024)
         val s = sections(ProbeStage.FACTS, r.stdout, listOf("meminfo", "gms"))
+        // A watch is not a TV: never generate a launcher/debloat plan for Wear OS.
+        // This check runs before the first snapshot and blocks all TV-only writes.
+        if (s.getValue("gms").any { it.trim() == "feature:android.hardware.type.watch" }) {
+            throw ProbeException(ProbeStage.FACTS, "Relógio Wear OS detectado: utilize o diagnóstico exclusivo de leitura.")
+        }
         val props = GetpropParser.parse(s.getValue("").asSequence())
         fun prop(k: String) = props[k]?.takeIf { it.isNotEmpty() } ?: throw ProbeException(ProbeStage.FACTS, "getprop has no $k")
         val memKb = s.getValue("meminfo").firstNotNullOfOrNull { Regex("^MemTotal:\\s+(\\d{1,12}) kB").find(it)?.groupValues?.get(1)?.toLong() }

@@ -31,7 +31,7 @@ object ProbeScripts {
     val NOOP_PACKAGE = PackageName("tv.cleanyour.noop")
 
     // Stage FACTS: every property, memory, and whether Play Services exists.
-    val FACTS = ShellLine("getprop; ${mark("meminfo")}; cat /proc/meminfo; ${mark("gms")}; pm path com.google.android.gms")
+    val FACTS = ShellLine("getprop; ${mark("meminfo")}; cat /proc/meminfo; ${mark("gms")}; pm path com.google.android.gms; pm list features")
 
     // Stage PACKAGES: three calls, the package manager's own lists plus the flags and state of each.
     val PACKAGES = ShellLine("pm list packages -f")

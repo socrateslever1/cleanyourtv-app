@@ -437,7 +437,7 @@ internal fun ColumnScope.ForgetContent(tvName: String, onIntent: (TvSettingsInte
 
 // M8 App settings (D12, F2, F13). The Reset my key confirmation is FLAG_SECURE (D35, set by the app).
 @Composable
-fun AppSettingsScreen(state: AppSettingsState, onIntent: (AppSettingsIntent) -> Unit, onBack: () -> Unit, onOpenRelease: () -> Unit, modifier: Modifier = Modifier, onOpenPhoneStorage: () -> Unit = {}, onOpenPhoneApps: () -> Unit = {}) {
+fun AppSettingsScreen(state: AppSettingsState, onIntent: (AppSettingsIntent) -> Unit, onBack: () -> Unit, onOpenRelease: () -> Unit, modifier: Modifier = Modifier, onOpenPhoneStorage: () -> Unit = {}, onOpenPhoneApps: () -> Unit = {}, onInspectWear: () -> Unit = {}) {
     var licences by rememberSaveable { mutableStateOf(false) }
     var privacy by rememberSaveable { mutableStateOf(false) }
     ScreenScaffold(Glow.Tv, modifier, topBar = { CytTopBar(onBack = onBack) }) {
@@ -458,6 +458,12 @@ fun AppSettingsScreen(state: AppSettingsState, onIntent: (AppSettingsIntent) -> 
             ListRow(stringResource(R.string.appsettings_phone_apps),
                 subtitle = stringResource(R.string.appsettings_phone_apps_detail),
                 onClick = onOpenPhoneApps)
+        }
+        SectionLabel(stringResource(R.string.appsettings_wear_section))
+        ListGroup {
+            ListRow(stringResource(R.string.appsettings_wear_diagnose),
+                subtitle = stringResource(R.string.appsettings_wear_diagnose_note),
+                onClick = onInspectWear)
         }
         SectionLabel(stringResource(R.string.appsettings_about))
         ListGroup {
