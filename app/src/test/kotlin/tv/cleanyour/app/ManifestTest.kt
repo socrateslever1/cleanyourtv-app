@@ -27,6 +27,7 @@ class ManifestTest {
                 "android.permission.INTERNET", "android.permission.ACCESS_NETWORK_STATE", "android.permission.CHANGE_WIFI_MULTICAST_STATE",
                 "android.permission.FOREGROUND_SERVICE", "android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE", "android.permission.POST_NOTIFICATIONS",
                 "android.permission.USE_BIOMETRIC",   // RFC-W8-7: required by D17's BiometricPrompt
+                "android.permission.REQUEST_INSTALL_PACKAGES", // user-approved external APK updates
             ),
             info.requestedPermissions.orEmpty().toSet(),
         )

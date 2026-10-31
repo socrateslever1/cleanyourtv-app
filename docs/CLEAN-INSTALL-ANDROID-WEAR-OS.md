@@ -1,8 +1,11 @@
 # Clean-install Android — arquitetura multidispositivo
 
 Nome comercial do APK: **Clean-install Android**. O projeto histórico/repositório
-continua em \`socrateslever1/cleanyourtv-app\` e mantém o \`applicationId\`
-para não quebrar dados, importações ou o mecanismo de atualização.
+continua em \`socrateslever1/cleanyourtv-app\`. A versão Full usa
+\`applicationId\` distinto \`tv.cleanyour.app.cleaninstall\`, permitindo instalar
+em paralelo ao antigo Clean Your TV e preservar o backup privado dele.
+Não há migração automática dos dados privados entre os apps.
+A assinatura própria persistente ainda é obrigatória para futuras atualizações.
 
 ## Perfis por plataforma
 

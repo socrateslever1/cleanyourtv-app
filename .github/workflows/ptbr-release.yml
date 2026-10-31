@@ -38,7 +38,7 @@ jobs:
           find dist -type f -name '*.apk' -print
           APK="$(find dist -type f -name '*.apk' -print -quit)"
           test -s "$APK"
-          cp "$APK" dist/CleanYourTV-PTBR-Chromecast4K.apk
+          cp "$APK" dist/Clean-install-Android.apk
       - name: Publicar APK diretamente no GitHub Releases
         if: steps.gate.outputs.publish == 'true'
         env:
@@ -48,7 +48,7 @@ jobs:
           SOURCE_RUN="${{ github.event.workflow_run.run_number }}"
           TAG="ptbr-r${SOURCE_RUN}-${SOURCE_SHA:0:8}"
           cat > dist/LEIA-ME.txt <<'TXT'
-          CleanYourTV PT-BR para celular Android, utilizado com Chromecast Google TV 4K.
+          Clean-install Android instalado no celular para gerenciamento de TVs e relógios Wear OS.
           Instale no celular, não no Chromecast.
           O status de assinatura consta em build-information.txt.
           Para atualizar no lugar da versão anterior, todas as compilações
@@ -61,7 +61,7 @@ jobs:
           # On some forks, workflow_run gets read-only GITHUB_TOKEN, even with
           # permissions.contents=write. The optional owned PAT fixes publishing.
           gh release create "$TAG" \
-            dist/CleanYourTV-PTBR-Chromecast4K.apk \
+            dist/Clean-install-Android.apk \
             dist/ptbr-cobertura.json \
             dist/LEIA-ME.txt \
             dist/build-information.txt \
