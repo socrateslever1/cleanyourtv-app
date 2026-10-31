@@ -45,6 +45,7 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.CLEAN_TV_RELEASE_TOKEN || github.token }}
           SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
+          EXPECTED_CERT: ${{ secrets.CLEAN_TV_CERT_SHA256 }}
         run: |
           SOURCE_RUN="${{ github.event.workflow_run.run_number }}"
           TAG="ptbr-r${SOURCE_RUN}-${SOURCE_SHA:0:8}"
