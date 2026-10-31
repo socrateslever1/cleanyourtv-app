@@ -21,7 +21,7 @@ jobs:
           SOURCE_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           git cat-file -e "$SOURCE_SHA^{commit}"
-          CHANGED="$(git diff --name-only "$SOURCE_SHA" HEAD | grep -v '^.github/workflows/ptbr-release.yml$' || true)"
+          CHANGED="$(git diff --name-only "$SOURCE_SHA" HEAD | grep -Ev '^(.github/workflows/ptbr-release.yml|docs/)' || true)"
           if [ -n "$CHANGED" ]; then
             echo "Uma compilação mais nova já está disponível; ignorando esta."
             echo "publish=false" >> "$GITHUB_OUTPUT"
