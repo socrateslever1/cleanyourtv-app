@@ -2,86 +2,105 @@ name: APK em português brasileiro (Chromecast 4K)
 on:
   push:
     branches: [main]
-    paths:
-      - 'scripts/localize_ptbr.py'
-      - '.github/workflows/ptbr-apk.yml'
-      - 'feature/**'
-      - 'app/**'
-      - 'ui/**'
-      - 'core/**'
+    paths: ['app/**', 'feature/**', 'ui/**', 'core/**', 'adb/**', 'android/**', 'build-logic/**', 'gradle/**', 'scripts/localize_ptbr.py', '.github/workflows/ptbr-apk.yml']
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: signed-apk-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   apk:
     runs-on: ubuntu-latest
-    timeout-minutes: 80
+    timeout-minutes: 85
     env:
       GRADLE_OPTS: -Dorg.gradle.daemon=false
     steps:
-      - name: Baixar código e submódulos
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
         with:
           submodules: recursive
           persist-credentials: false
-      - name: Configurar Java 21
-        uses: actions/setup-java@v4
+      - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-      - name: Preparar Gradle
-        uses: gradle/actions/setup-gradle@v4
-      - name: Identificar versão e configurar assinatura persistente
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Exigir identidade e assinatura de produção
+        shell: bash
         env:
-          KEYSTORE_BASE64: ${{ secrets.CLEAN_TV_KEYSTORE_B64 }}
+          KEY_B64: ${{ secrets.CLEAN_TV_KEYSTORE_B64 }}
           STORE_PASS: ${{ secrets.CLEAN_TV_KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.CLEAN_TV_KEY_ALIAS }}
           KEY_PASS: ${{ secrets.CLEAN_TV_KEY_PASSWORD }}
+          CERT_SHA256: ${{ secrets.CLEAN_TV_CERT_SHA256 }}
         run: |
-          echo "CLEAN_TV_VERSION_CODE=$((23000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
-          echo "CLEAN_TV_VERSION_NAME=0.4.6.1-ptbr.r${GITHUB_RUN_NUMBER}" >> "$GITHUB_ENV"
-          if [ -n "$KEYSTORE_BASE64" ] && [ -n "$STORE_PASS" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEY_PASS" ]; then
-            mkdir -p "$RUNNER_TEMP/owned-signing"
-            printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/owned-signing/clean-your-tv.jks"
-            chmod 600 "$RUNNER_TEMP/owned-signing/clean-your-tv.jks"
-            echo "CLEAN_TV_KEYSTORE_PATH=$RUNNER_TEMP/owned-signing/clean-your-tv.jks" >> "$GITHUB_ENV"
-            echo "CLEAN_TV_KEYSTORE_PASSWORD=$STORE_PASS" >> "$GITHUB_ENV"
-            echo "CLEAN_TV_KEY_ALIAS=$KEY_ALIAS" >> "$GITHUB_ENV"
-            echo "CLEAN_TV_KEY_PASSWORD=$KEY_PASS" >> "$GITHUB_ENV"
-            echo "CLEAN_TV_SIGNING=owned" >> "$GITHUB_ENV"
-          else
-            echo "::warning::Missing owned signing secrets: this APK uses a temporary debug key and cannot reliably update in place."
-            echo "CLEAN_TV_SIGNING=debug" >> "$GITHUB_ENV"
+          set -euo pipefail
+          for key in KEY_B64 STORE_PASS KEY_ALIAS KEY_PASS CERT_SHA256; do
+            if [ -z "${!key}" ]; then
+              echo "::error::Assinatura permanente ainda não configurada ($key). Build de produção bloqueado."
+              exit 1
+            fi
+          done
+          [[ "$CERT_SHA256" =~ ^[a-fA-F0-9]{64}$ ]] || { echo "::error::Fingerprint SHA256 inválido"; exit 1; }
+          mkdir -p "$RUNNER_TEMP/cleanyourtv-private"
+          chmod 700 "$RUNNER_TEMP/cleanyourtv-private"
+          KEYSTORE="$RUNNER_TEMP/cleanyourtv-private/signing.jks"
+          printf '%s' "$KEY_B64" | base64 --decode > "$KEYSTORE"
+          chmod 600 "$KEYSTORE"
+          keytool -list -keystore "$KEYSTORE" -storepass "$STORE_PASS" -alias "$KEY_ALIAS" > /dev/null
+          PUBLIC_CERT="$(keytool -list -v -keystore "$KEYSTORE" -storepass "$STORE_PASS" -alias "$KEY_ALIAS" | sed -n 's/^[[:space:]]*SHA256:[[:space:]]*//p' | head -1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          EXPECTED="$(printf '%s' "$CERT_SHA256" | tr '[:upper:]' '[:lower:]')"
+          if [ "$PUBLIC_CERT" != "$EXPECTED" ]; then
+            echo "::error::Certificado inesperado. Chave trocada? Abortando para evitar falha de atualização."
+            exit 1
           fi
-      - name: Gerar localização pt-BR e verificar argumentos
+          echo "CYT_RELEASE_KEYSTORE=$KEYSTORE" >> "$GITHUB_ENV"
+          echo "CLEAN_TV_CERT=$PUBLIC_CERT" >> "$GITHUB_ENV"
+          echo "CLEAN_TV_VERSION_CODE=$((1000000 + GITHUB_RUN_NUMBER))" >> "$GITHUB_ENV"
+          echo "CLEAN_TV_VERSION_NAME=1.0.0-ptbr.r$GITHUB_RUN_NUMBER" >> "$GITHUB_ENV"
+      - name: Gerar recursos pt-BR
         run: |
           python3 scripts/localize_ptbr.py --root . --report ptbr-cobertura.json
-          python3 -m json.tool ptbr-cobertura.json
-      - name: Compilar APK para instalar no celular
+          python3 -m json.tool ptbr-cobertura.json >/dev/null
+      - name: Compilar fullRelease (não depurável)
+        env:
+          CYT_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.CLEAN_TV_KEYSTORE_PASSWORD }}
+          CYT_RELEASE_KEY_ALIAS: ${{ secrets.CLEAN_TV_KEY_ALIAS }}
+          CYT_RELEASE_KEY_PASSWORD: ${{ secrets.CLEAN_TV_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew :app:assembleFullDebug --no-daemon --stacktrace --console=plain
-          printf 'version=%s\nversionCode=%s\nsigning=%s\nrun=%s\n' "$CLEAN_TV_VERSION_NAME" "$CLEAN_TV_VERSION_CODE" "$CLEAN_TV_SIGNING" "$GITHUB_RUN_NUMBER" > build-information.txt
-      - name: Checar APK gerado
+          ./gradlew :app:assembleFullRelease --no-daemon --stacktrace --console=plain
+      - name: Verificar APK, assinatura, pacote e versão
+        shell: bash
         run: |
-          find app/build/outputs/apk -type f -name '*.apk' -print
-          APK="$(find app/build/outputs/apk/full/debug -type f -name '*.apk' -print -quit)"
+          set -euo pipefail
+          APK="$(find app/build/outputs/apk/full/release -type f -name '*.apk' -print -quit)"
           test -s "$APK"
-          BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
-          test -x "$BUILD_TOOLS/apksigner"
-          "$BUILD_TOOLS/apksigner" verify --verbose --print-certs "$APK" | tee apk-certificate.txt
-          grep -Eq '(Signer #[0-9]+|V[0-9]+ Signer): certificate SHA-256 digest: [[:xdigit:]]{64}' apk-certificate.txt
-          SHA256="$(sha256sum "$APK" | cut -d ' ' -f1)"
-          printf 'apkSha256=%s\n' "$SHA256" >> build-information.txt
-          sed -n '1,12p' build-information.txt
-      - name: Publicar APK com certificado e assinatura identificáveis
+          TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          "$TOOLS/apksigner" verify --verbose --print-certs "$APK" | tee apk-certificate.txt
+          CERT="$(sed -nE 's/^.*certificate SHA-256 digest: ([[:xdigit:]]{64}).*$/\1/p' apk-certificate.txt | head -1 | tr '[:upper:]' '[:lower:]')"
+          [ -n "$CERT" ] && [ "$CERT" = "$CLEAN_TV_CERT" ] || { echo "::error::Certificado no APK inválido"; exit 1; }
+          BADGING="$("$TOOLS/aapt" dump badging "$APK")"
+          echo "$BADGING" | grep -Fq "package: name='tv.cleanyour.app.cleaninstall'"
+          echo "$BADGING" | grep -Fq "versionCode='$CLEAN_TV_VERSION_CODE'"
+          echo "$BADGING" | grep -Fq "versionName='$CLEAN_TV_VERSION_NAME'"
+          printf 'version=%s\nversionCode=%s\nsigning=owned\npackage=tv.cleanyour.app.cleaninstall\ncertificateSha256=%s\napkSha256=%s\nrun=%s\n' \
+            "$CLEAN_TV_VERSION_NAME" "$CLEAN_TV_VERSION_CODE" "$CERT" "$(sha256sum "$APK" | cut -d' ' -f1)" "$GITHUB_RUN_NUMBER" > build-information.txt
+          cat build-information.txt
+      - name: Publicar artefato assinado e auditável
         uses: actions/upload-artifact@v4
         with:
           name: CleanYourTV-PTBR-Chromecast4K-APK
           path: |
-            app/build/outputs/apk/full/debug/*.apk
-            ptbr-cobertura.json
-            build-information.txt
+            app/build/outputs/apk/full/release/*.apk
             apk-certificate.txt
+            build-information.txt
+            ptbr-cobertura.json
           retention-days: 30
           if-no-files-found: error
+      - name: Apagar chave temporária do runner
+        if: always()
+        run: |
+          if [ -n "${CYT_RELEASE_KEYSTORE:-}" ] && [ -f "$CYT_RELEASE_KEYSTORE" ]; then
+            shred -u "$CYT_RELEASE_KEYSTORE" || rm -f "$CYT_RELEASE_KEYSTORE"
+          fi
