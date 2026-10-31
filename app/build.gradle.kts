@@ -76,7 +76,6 @@ dependencies {
     implementation(project(":core:trust"))
     implementation(project(":core:registry"))
 
-    implementation("androidx.core:core:1.16.0")
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
