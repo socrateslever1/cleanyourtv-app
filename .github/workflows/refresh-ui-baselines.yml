@@ -1,0 +1,57 @@
+name: Atualizar capturas aprovadas da interface
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/refresh-ui-baselines.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: refresh-ui-goldens
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 65
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Regenerar somente capturas dos fluxos alterados
+        run: |
+          chmod +x gradlew
+          ./gradlew :feature:manage:recordRoborazziDebug :feature:setup:recordRoborazziDebug :feature:connect:recordRoborazziDebug --console=plain --no-daemon
+          git add feature/manage/src/test/screenshots feature/setup/src/test/screenshots feature/connect/src/test/screenshots
+          git diff --cached --name-only | tee /tmp/changed-goldens.txt
+          if grep -Ev '^feature/(manage|setup|connect)/src/test/screenshots/[^/]+\.png$' /tmp/changed-goldens.txt | grep -q . ; then
+            echo 'Arquivos imprevistos no staging'; exit 1
+          fi
+      - name: Validar capturas regeneradas
+        run: |
+          ./gradlew :feature:manage:verifyRoborazziDebug :feature:setup:verifyRoborazziDebug :feature:connect:verifyRoborazziDebug --console=plain --no-daemon
+      - name: Publicar capturas atualizadas no main
+        run: |
+          if git diff --cached --quiet; then
+            echo "As imagens de referência já correspondem à interface."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "test(ui): atualizar imagens de referência após mudanças intencionais"
+          git push origin HEAD:main
+      - name: Arquivar resultado para auditoria
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-goldens-review
+          path: |
+            feature/manage/src/test/screenshots/
+            feature/setup/src/test/screenshots/
+            feature/connect/src/test/screenshots/
+          retention-days: 7
