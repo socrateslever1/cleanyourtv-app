@@ -14,4 +14,6 @@
     <string name="app_update_body">A new APK has been published to your GitHub. Download it and confirm installation on this phone. Android requires the same signing key to update an existing app; otherwise it must first be uninstalled.</string>
     <string name="app_update_download">Download update</string>
     <string name="app_update_later">Later</string>
+    <string name="app_update_downloading">Downloading and verifying the APK on this phone. You will confirm installation with Android.</string>
+    <string name="app_update_install_problem">Could not install the update</string>
 </resources>
