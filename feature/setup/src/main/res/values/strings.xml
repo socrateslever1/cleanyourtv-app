@@ -81,7 +81,7 @@
     <string name="found_group_brand_generic">Manufacturer extras</string>
     <string name="found_group_screensaver">Ambient mode and screensavers</string>
     <string name="found_group_accessibility">Accessibility</string>
-    <string name="found_tcl_visual_note">TCL Google TV: we keep the original home screen, so Settings, Netflix and YouTube buttons on the remote continue working. For a richer layout, arrange your apps, recommendations and channels in the TV's original Home settings. Replacing the launcher is disabled for safety.</string>
+    <string name="found_tcl_visual_note">TCL Google TV: we keep the original home screen, so Settings, Netflix and YouTube buttons on the remote continue working. For a richer layout, arrange your apps, recommendations and channels in the TV\'s original Home settings. Replacing the launcher is disabled for safety.</string>
     <!-- D36 (RF-LAUNCHER-240 F1): the plan replaces a home screen app signed with another key -->
     <string name="found_replaces_launcher">Replaces the home screen app already on this TV. Its look, app order, settings and card answers start fresh.</string>
     <string name="found_tcl_remote_keys">On TCL Google TV, the remote\'s Settings (gear), Netflix and YouTube buttons stop working with the new home screen. To get them back, choose Use the TV\'s own home screen in Manage.</string>
