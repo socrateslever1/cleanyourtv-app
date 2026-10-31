@@ -169,6 +169,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
     val context = LocalContext.current
     val view = LocalView.current
     val scope = rememberCoroutineScope()
+    var apkInstallTarget by remember { mutableStateOf<TvId?>(null) }
     if (graph.store.flavour == "full") UpdateNotifier()
 
     // 0.4.6 (REPORTING-PROPOSAL 2.2): a card's "Report a problem" (IssueRoute) opens the GitHub form
@@ -272,7 +273,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
                     val m = rememberMachine("manage:${key.tvId}") { graph.manage(it, key.tvId?.let(::TvId)) }
                     val state by m.state.collectAsStateWithLifecycle()
                     LaunchedEffect(m) { m.effects.collect { onManageEffect(it) } }
-                    ManageScreen(state, m::dispatch)
+                    ManageScreen(state, m::dispatch, onInstallApk = { apkInstallTarget = it })
                 }
                 entry<Dest.SwitchedOff> { key ->
                     val m = rememberMachine("off:${key.tvId}") { graph.switchedOff(it, TvId(key.tvId)) }
@@ -360,6 +361,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
         // M1a: any returning write that finds port 5555 closed shows the debugging step here.
         val reach by graph.access.reach.collectAsStateWithLifecycle()
         if (reach !is Reach.Idle) DebugStepSheet(reach) { graph.access.cancelWaiting() }
+        apkInstallTarget?.let { id -> TvApkInstallDialog(graph, id) { apkInstallTarget = null } }
         SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(16.dp))
     }
 }

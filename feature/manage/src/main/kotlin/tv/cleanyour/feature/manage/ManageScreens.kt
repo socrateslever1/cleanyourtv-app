@@ -50,6 +50,7 @@ import tv.cleanyour.core.flows.TvSettingsState
 import tv.cleanyour.core.flows.UpdateCheck
 import tv.cleanyour.core.model.Level
 import tv.cleanyour.core.model.PackageName
+import tv.cleanyour.core.model.TvId
 import tv.cleanyour.core.planner.PlanKind
 import tv.cleanyour.ui.design.component.ActionColumn
 import tv.cleanyour.ui.design.component.Banner
@@ -101,7 +102,7 @@ private val titleTop = Modifier.padding(top = 20.dp)
 
 // M1 Manage: the app's home once a TV exists. Nothing is more than two taps away.
 @Composable
-fun ManageScreen(state: ManageState, onIntent: (ManageIntent) -> Unit, modifier: Modifier = Modifier) {
+fun ManageScreen(state: ManageState, onIntent: (ManageIntent) -> Unit, modifier: Modifier = Modifier, onInstallApk: (TvId) -> Unit = {}) {
     val tv = state.current
     val locale = LocalConfiguration.current.locales[0]
     ScreenScaffold(Glow.Tv, modifier, topBar = {
@@ -131,6 +132,12 @@ fun ManageScreen(state: ManageState, onIntent: (ManageIntent) -> Unit, modifier:
                 level = stringResource(if (tv.level == Level.CUSTOM) R.string.manage_level_custom else R.string.manage_level_simple),
                 onClick = { onIntent(ManageIntent.RefreshThumbnail) },
             )
+            // The restore screen can undo changes and export an offline ZIP via SAF.
+            if (tv.restorePointAtMs != null) {
+                SecondaryButton(stringResource(R.string.manage_restore_quick),
+                    { onIntent(ManageIntent.Open(ManageSection.RESTORE_POINT)) },
+                    Modifier.padding(top = 12.dp))
+            }
             // Navigation into the wizard, whose own "Make it clean" is the guarded action (R5-W8 O1).
             if (!tv.clean) PrimaryButton(stringResource(R.string.manage_clean_again), { onIntent(ManageIntent.CleanAgain) }, Modifier.padding(top = 16.dp), guardObscured = false)
             // 0.3.2 B1: an unlisted TV (no exact profile) invites the person to help add it.
@@ -176,6 +183,9 @@ fun ManageScreen(state: ManageState, onIntent: (ManageIntent) -> Unit, modifier:
                 ListDivider()
                 ListRow(stringResource(R.string.manage_row_restore), subtitle = tv.restorePointAtMs?.let { msg(R.string.manage_row_restore_sub, "date" to shortDateTime(it, locale)) },
                     onClick = { onIntent(ManageIntent.Open(ManageSection.RESTORE_POINT)) })
+                ListDivider()
+                ListRow(stringResource(R.string.manage_install_apk), subtitle = stringResource(R.string.manage_install_apk_note),
+                    onClick = { onInstallApk(tv.id) })
                 ListDivider()
                 ListRow(stringResource(R.string.manage_row_tvsettings), onClick = { onIntent(ManageIntent.Open(ManageSection.TV_SETTINGS)) })
             }

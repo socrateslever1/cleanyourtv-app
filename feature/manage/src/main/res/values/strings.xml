@@ -47,7 +47,10 @@
     <string name="manage_row_better_back_on">{count, plural, one {# app is better switched back on} other {# apps are better switched back on}}</string>
     <string name="manage_row_leftovers">Check for leftovers</string>
     <string name="manage_row_leftovers_sub">After a TV software update</string>
-    <string name="manage_row_restore">Restore point</string>
+    <string name="manage_row_restore">Restore and back up TV</string>
+    <string name="manage_restore_quick">Restore TV or save backup on phone</string>
+    <string name="manage_install_apk">Install APK from phone</string>
+    <string name="manage_install_apk_note">Pick a trusted APK on the phone, review the package and install via your authenticated ADB connection.</string>
     <string name="manage_row_restore_sub">{date}. Undo everything from here.</string>
     <string name="manage_row_tvsettings">TV settings</string>
     <string name="manage_add_tv">+ Set up another TV</string>
