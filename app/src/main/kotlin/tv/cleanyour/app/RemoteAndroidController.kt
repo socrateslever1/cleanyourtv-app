@@ -192,6 +192,25 @@ internal class RemoteAndroidController(private val context: Context, private val
         val info = withContext(Dispatchers.IO) { snapshot(s) }
         require(info.target.kind != RemoteKind.TV && info.target.kind != RemoteKind.UNKNOWN)
         require(info.target.userId == 0 && info.target.deviceId == known?.target?.deviceId)
+        require(info.target.firmwareId == known?.target?.firmwareId) {
+            "Firmware mudou desde a conexão. Reconecte e revise o dispositivo."
+        }
+        // Never replace the sole restore baseline while writes are unresolved,
+        // or while any previously recorded app still differs from that baseline.
+        require(!journalFile(info.target.deviceId).exists()) {
+            "Existe uma operação sem confirmação. Reconcilie antes de criar outro backup."
+        }
+        val previous = withContext(Dispatchers.IO) {
+            RemoteStateBackup.read(context, info.target.deviceId)
+        }
+        val currentStates = info.apps.associate { it.packageName.value to it.enabled }
+        val diverged = previous?.states?.firstOrNull {
+            currentStates[it.packageName] != it.enabled
+        }
+        require(diverged == null) {
+            "O estado atual difere do backup anterior (${diverged?.packageName}). " +
+                "Restaure as alterações antes de substituir a referência de segurança."
+        }
         val states = info.apps.map { RemoteStateBackup.State(it.packageName.value, it.enabled) }
         val saved = withContext(Dispatchers.IO) {
             RemoteStateBackup.save(context, info.target.deviceId, info.target.firmwareId,
