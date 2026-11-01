@@ -208,6 +208,25 @@ internal class RemoteAndroidController(private val context: Context, private val
 
     private fun journalFile(deviceId: String) = File(context.filesDir, "remote-state-v1/$deviceId.pending")
 
+    private fun externalReceiptStore() =
+        context.getSharedPreferences("remote_state_external_backup_v1", Context.MODE_PRIVATE)
+
+    /** Called only after reopening and verifying the user-selected SAF ZIP. */
+    suspend fun markExportVerified(record: RemoteStateBackup.Record) = lock.withLock {
+        val loaded = withContext(Dispatchers.IO) {
+            RemoteStateBackup.read(context, record.deviceId)
+        } ?: error("O backup local não existe mais.")
+        require(loaded.sha256 == record.sha256) { "Backup exportado difere da cópia local." }
+        externalReceiptStore().edit().putString(record.deviceId, record.sha256).commit().also {
+            require(it) { "Falha ao registrar a exportação verificada." }
+        }
+    }
+
+    suspend fun isExportVerified(record: RemoteStateBackup.Record): Boolean =
+        lock.withLock {
+            externalReceiptStore().getString(record.deviceId, null) == record.sha256
+        }
+
     @OptIn(RawShell::class)
     suspend fun change(pkg: String, enable: Boolean, restoring: Boolean = false): String = lock.withLock {
         val s = session ?: error("Conecte o aparelho.")
@@ -224,6 +243,9 @@ internal class RemoteAndroidController(private val context: Context, private val
         } ?: error("Crie backup antes de alterar este dispositivo.")
         require(backup.states.any { it.packageName == pkg }) {
             "O pacote não consta do backup; crie outro antes de modificá-lo."
+        }
+        require(externalReceiptStore().getString(info.target.deviceId, null) == backup.sha256) {
+            "Exporte o backup ZIP e confirme sua integridade antes de modificar o dispositivo."
         }
         val pending = journalFile(info.target.deviceId)
         require(!pending.exists()) { "Há operação anterior sem confirmação. Não serão feitas novas alterações." }

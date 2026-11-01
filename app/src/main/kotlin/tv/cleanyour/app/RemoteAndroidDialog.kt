@@ -49,6 +49,7 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
     var busy by remember { mutableStateOf(false) }
     var backup by remember { mutableStateOf<RemoteStateBackup.Record?>(null) }
     var chosenApk by remember { mutableStateOf<String?>(null) }
+    var externalBackupVerified by remember { mutableStateOf(false) }
 
     DisposableEffect(manager) {
         onDispose { graph.workScope.launch { manager.disconnect() } }
@@ -74,7 +75,15 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
                 context.contentResolver.openOutputStream(uri)?.use { RemoteStateBackup.export(current, it) }
                     ?: error("Não foi possível abrir o destino.")
             }
-            message = "Backup exportado. Contém estado dos pacotes; APKs e dados privados não estão incluídos."
+            val reloaded = withContext(Dispatchers.IO) {
+                context.contentResolver.openInputStream(uri)?.use {
+                    RemoteStateBackup.importZip(it)
+                } ?: error("O destino não permitiu reler o backup exportado.")
+            }
+            require(reloaded.sha256 == current.sha256) { "O ZIP exportado não corresponde ao backup." }
+            manager.markExportVerified(current)
+            externalBackupVerified = true
+            message = "Backup exportado, relido e verificado. Contém estado dos pacotes; APKs são exportados separadamente quando acessíveis."
         }
     }
 
@@ -93,6 +102,8 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
                 "Backup não pertence a este dispositivo, firmware e usuário."
             }
             backup = withContext(Dispatchers.IO) { RemoteStateBackup.saveImported(context, loaded) }
+            manager.markExportVerified(backup!!)
+            externalBackupVerified = true
             message = "Integridade do backup verificada por SHA-256; a origem não é autenticada por esse hash. Confira os pacotes antes de restaurar."
         }
     }
@@ -144,6 +155,7 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
                 TextButton(enabled = !busy && WearOsReadOnly.localIpv4(ip), onClick = { run {
                     inventory = manager.connect(ip)
                     backup = manager.loadBackup()
+                    externalBackupVerified = backup?.let { manager.isExportVerified(it) } ?: false
                     message = inventory!!.explanation
                 } }) { Text("Conectar dispositivo") }
                 inventory?.let { info ->
@@ -152,9 +164,12 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
                     Text(info.explanation)
                     if (backup == null) Text("Nenhum backup verificado; alterações bloqueadas.")
                     else Text("Backup SHA-256: " + backup!!.sha256.take(16) + "…")
+                    if (backup != null && !externalBackupVerified)
+                        Text("Exporte e verifique o ZIP antes de ativar/desativar aplicativos.")
                     TextButton(enabled = !busy, onClick = { run {
                         backup = manager.backup()
-                        message = "Backup durável gravado e verificado antes das alterações."
+                        externalBackupVerified = false
+                        message = "Backup gravado. Exporte o ZIP e confirme sua leitura antes de modificar o dispositivo."
                     } }) { Text("Criar backup do estado") }
                     TextButton(enabled = !busy && backup != null, onClick = {
                         export.launch("cleanyourtv-android-" + info.target.deviceId + ".zip")
@@ -169,6 +184,7 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
                     TextButton(enabled = !busy, onClick = { run {
                         inventory = manager.refresh()
                         backup = manager.loadBackup()
+                        externalBackupVerified = backup?.let { manager.isExportVerified(it) } ?: false
                         message = inventory!!.explanation
                     } }) { Text("Atualizar inventário") }
                     HorizontalDivider()
@@ -177,7 +193,7 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
                         val pkg = app.packageName.value
                         val desired = !app.enabled
                         val found = backup
-                        val eligible = info.canWrite && found != null &&
+                        val eligible = info.canWrite && externalBackupVerified && found != null &&
                             RemoteAndroidPolicy.evaluate(info.target, app,
                                 if (desired) RemoteOperation.ENABLE else RemoteOperation.DISABLE,
                                 found.receipt(), app.enabled, System.currentTimeMillis(),
