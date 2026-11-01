@@ -1,6 +1,7 @@
 package tv.cleanyour.app
 
 import android.content.Context
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -123,7 +124,10 @@ internal class RemoteAndroidController(private val context: Context, private val
                 val admins = read(s, "dumpsys device_policy")
                 protected.addAll(extractPackages(admins))
                 true
-            }.getOrDefault(false)
+            }.getOrElse { failure ->
+                if (failure is CancellationException) throw failure
+                false
+            }
         }
         val target = RemoteTarget(kind, deviceId, firmware, currentUser, s.identity.sdk,
             authenticated = true,
