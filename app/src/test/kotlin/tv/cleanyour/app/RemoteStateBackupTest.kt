@@ -28,7 +28,7 @@ class RemoteStateBackupTest {
         assertEquals(states, RemoteStateBackup.read(context, device)?.states)
         val zip = ByteArrayOutputStream()
         RemoteStateBackup.export(saved, zip)
-        val imported = RemoteStateBackup.import(ByteArrayInputStream(zip.toByteArray()))
+        val imported = RemoteStateBackup.importZip(ByteArrayInputStream(zip.toByteArray()))
         assertEquals(device, imported.deviceId)
         assertEquals(firmware, imported.firmwareId)
         assertEquals(states, imported.states)
@@ -44,7 +44,7 @@ class RemoteStateBackupTest {
                 it.closeEntry()
             }
             var rejected = false
-            try { RemoteStateBackup.import(ByteArrayInputStream(zip.toByteArray())) }
+            try { RemoteStateBackup.importZip(ByteArrayInputStream(zip.toByteArray())) }
             catch (_: IllegalArgumentException) { rejected = true }
             assertTrue("Must reject $entry", rejected)
         }

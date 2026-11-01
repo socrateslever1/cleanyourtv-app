@@ -108,21 +108,21 @@ internal class RemoteAndroidController(private val context: Context, private val
         // Each of these reads must succeed for the policy to permit any write.
         // Unknown/default system roles MUST NOT become bypasses.
         var protectionsKnown = false
-        val protected = mutableSetOf<PackageName>()
+        val protectedRoles = mutableSetOf<PackageName>()
         if (kind == RemoteKind.PHONE || kind == RemoteKind.TABLET) {
             protectionsKnown = runCatching {
                 for (role in criticalRoles) {
-                    protected.addAll(extractPackages(read(s,
+                    protectedRoles.addAll(extractPackages(read(s,
                         "cmd role get-role-holders --user $currentUser android.app.role.$role")))
                 }
                 val home = read(s, "cmd package resolve-activity --brief -a android.intent.action.MAIN -c android.intent.category.HOME")
-                protected.addAll(extractPackages(home))
+                protectedRoles.addAll(extractPackages(home))
                 val ime = read(s, "settings get secure default_input_method")
-                protected.addAll(extractPackages(ime))
+                protectedRoles.addAll(extractPackages(ime))
                 val accessibility = read(s, "settings get secure enabled_accessibility_services")
-                protected.addAll(extractPackages(accessibility))
+                protectedRoles.addAll(extractPackages(accessibility))
                 val admins = read(s, "dumpsys device_policy")
-                protected.addAll(extractPackages(admins))
+                protectedRoles.addAll(extractPackages(admins))
                 true
             }.getOrElse { failure ->
                 if (failure is CancellationException) throw failure
@@ -134,7 +134,7 @@ internal class RemoteAndroidController(private val context: Context, private val
             capabilities = setOf(RemoteCapability.PACKAGE_STATE_READ,
                 RemoteCapability.PACKAGE_STATE_WRITE, RemoteCapability.VERIFIED_PACKAGE_IDENTITY),
             dynamicProtectionsKnown = protectionsKnown,
-            protectedPackages = protected,
+            protectedPackages = protectedRoles,
             certifiedWearFirmware = false)
         val apps = installed.sortedBy { it.value }.map {
             RemoteApp(it, userInstalled = true, systemApp = false, enabled = it !in disabled)

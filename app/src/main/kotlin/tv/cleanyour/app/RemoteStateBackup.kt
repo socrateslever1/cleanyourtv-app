@@ -136,7 +136,7 @@ internal object RemoteStateBackup {
         }
     }
 
-    fun import(input: InputStream): Record {
+    fun importZip(input: InputStream): Record {
         val files = LinkedHashMap<String, ByteArray>()
         ZipInputStream(input).use { zip ->
             var total = 0

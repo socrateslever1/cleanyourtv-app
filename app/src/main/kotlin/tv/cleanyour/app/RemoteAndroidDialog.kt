@@ -78,13 +78,13 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
         }
     }
 
-    val import = rememberLauncherForActivityResult(
+    val importPicker = rememberLauncherForActivityResult(
         ActivityResultContracts.OpenDocument()
     ) { uri ->
         if (uri != null) run {
             val info = inventory ?: error("Conecte o dispositivo antes de importar.")
             val loaded = withContext(Dispatchers.IO) {
-                context.contentResolver.openInputStream(uri)?.use { RemoteStateBackup.import(it) }
+                context.contentResolver.openInputStream(uri)?.use { RemoteStateBackup.importZip(it) }
                     ?: error("Não foi possível ler o arquivo.")
             }
             require(loaded.deviceId == info.target.deviceId &&
@@ -159,7 +159,7 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
                     TextButton(enabled = !busy && backup != null, onClick = {
                         export.launch("cleanyourtv-android-" + info.target.deviceId + ".zip")
                     }) { Text("Exportar backup ZIP") }
-                    TextButton(enabled = !busy, onClick = { import.launch(arrayOf("application/zip", "application/octet-stream")) }) {
+                    TextButton(enabled = !busy, onClick = { importPicker.launch(arrayOf("application/zip", "application/octet-stream")) }) {
                         Text("Importar backup ZIP")
                     }
                     TextButton(enabled = !busy, onClick = { run {
