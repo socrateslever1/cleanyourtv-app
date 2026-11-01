@@ -22,13 +22,15 @@ import tv.cleanyour.core.ops.RemoteRestoreReceipt
 internal object RemoteStateBackup {
     private const val MAX_SNAPSHOT = 2 * 1024 * 1024
     private const val MAX_ZIP = 4 * 1024 * 1024
-    private const val SCHEMA = 1
+    private const val SCHEMA = 2
     private const val SNAPSHOT = "snapshot.json"
     private const val MANIFEST = "manifest.json"
     private val id = Regex("^[a-f0-9]{16}$")
     private val digest = Regex("^[a-f0-9]{64}$")
 
-    data class State(val packageName: String, val enabled: Boolean)
+    data class State(val packageName: String, val enabledSetting: RemoteEnabledState) {
+        val enabled: Boolean get() = enabledSetting.effectivelyEnabled
+    }
     data class Record(val deviceId: String, val firmwareId: String, val userId: Int,
         val capturedAtMs: Long, val states: List<State>, val sha256: String) {
         fun receipt() = RemoteRestoreReceipt(deviceId, firmwareId, userId, capturedAtMs,
@@ -41,7 +43,7 @@ internal object RemoteStateBackup {
     private fun snapshot(record: Record): ByteArray {
         val states = JSONArray()
         record.states.sortedBy { it.packageName }.forEach { s ->
-            states.put(JSONObject().put("package", s.packageName).put("enabled", s.enabled))
+            states.put(JSONObject().put("package", s.packageName).put("enabledSetting", s.enabledSetting.name))
         }
         return JSONObject().put("schema", SCHEMA).put("device", record.deviceId)
             .put("firmware", record.firmwareId).put("user", record.userId)
@@ -72,7 +74,9 @@ internal object RemoteStateBackup {
             val entry = arr.getJSONObject(i)
             val pkg = entry.getString("package")
             require(PackageName(pkg).value == pkg && seen.add(pkg)) { "Pacotes inválidos ou duplicados" }
-            states.add(State(pkg, entry.getBoolean("enabled")))
+            val state = RemoteEnabledState.ofName(entry.getString("enabledSetting"))
+                ?: error("Estado de pacote não reconhecido no backup")
+            states.add(State(pkg, state))
         }
         return Record(device, firmware, user, captured, states, declaredHash)
     }
@@ -127,7 +131,7 @@ internal object RemoteStateBackup {
             .put("snapshotSha256", record.sha256)
             .put("includesPrivateAppData", false)
             .put("includedApkCount", 0)
-            .put("note", "Estado dos pacotes. APKs não extraídos por esta versão.")
+            .put("note", "Estado exato (0..4) de habilitação dos pacotes; APKs são exportados separadamente.")
             .toString().encodeToByteArray()
         ZipOutputStream(out).use { zip ->
             listOf(MANIFEST to manifest, SNAPSHOT to contents).forEach { (name, bytes) ->

@@ -49,6 +49,7 @@ internal class RemoteAndroidController(private val context: Context, private val
     private val pkgRegex = Regex("^[A-Za-z][A-Za-z0-9_]{0,63}(\\.[A-Za-z][A-Za-z0-9_]{0,63}){1,15}$")
     private val nameCapture = Regex("[A-Za-z][A-Za-z0-9_]{0,63}(?:\\.[A-Za-z][A-Za-z0-9_]{0,63}){1,15}")
     private val readLimit = 4096
+    private val exactBackupLimit = 320
     private val criticalRoles = listOf("HOME", "DIALER", "SMS", "ASSISTANT", "BROWSER", "EMERGENCY")
 
     private fun safePackage(raw: String): PackageName? {
@@ -188,6 +189,14 @@ internal class RemoteAndroidController(private val context: Context, private val
         latest
     }
 
+    @OptIn(RawShell::class)
+    private suspend fun exactState(s: TvSession, pkg: PackageName): RemoteEnabledState {
+        val output = read(s, "dumpsys package " + pkg.value)
+        return RemotePackageStateParser.read(output, pkg.value, 0)
+            ?: error("O Android não forneceu o estado exato de " + pkg.value +
+                ". Backup/operação interrompidos sem alterações.")
+    }
+
     suspend fun backup(): RemoteStateBackup.Record = lock.withLock {
         val s = session ?: error("Conecte o aparelho.")
         val info = withContext(Dispatchers.IO) { snapshot(s) }
@@ -208,16 +217,31 @@ internal class RemoteAndroidController(private val context: Context, private val
             previous.userId == info.target.userId && previous.deviceId == info.target.deviceId)) {
             "Backup anterior pertence a outro firmware ou usuário. Preserve o ZIP e faça uma revisão explícita antes de substituí-lo."
         }
-        val currentStates = info.apps.associate { it.packageName.value to it.enabled }
+        // A boolean is insufficient to decide whether an exact-state backup
+        // may be overwritten: DEFAULT and ENABLED are semantically distinct.
+        val currentStates = if (previous == null) emptyMap() else withContext(Dispatchers.IO) {
+            previous.states.associate { prior ->
+                prior.packageName to info.apps.firstOrNull {
+                    it.packageName.value == prior.packageName
+                }?.let { exactState(s, it.packageName) }
+            }
+        }
         val changed = previous?.let { old ->
             RemoteBaselineGuard.changedPackages(
-                old.states.associate { it.packageName to it.enabled }, currentStates)
+                old.states.associate { it.packageName to it.enabledSetting },
+                currentStates)
         }.orEmpty()
         require(changed.isEmpty()) {
             "O estado atual difere do backup anterior (${changed.firstOrNull()}). " +
                 "Restaure as alterações antes de substituir a referência de segurança."
         }
-        val states = info.apps.map { RemoteStateBackup.State(it.packageName.value, it.enabled) }
+        require(info.apps.size <= exactBackupLimit) {
+            "Inventário grande demais para capturar estados exatos com segurança nesta versão."
+        }
+        val states = withContext(Dispatchers.IO) {
+            info.apps.map { RemoteStateBackup.State(
+                it.packageName.value, exactState(s, it.packageName)) }
+        }
         val saved = withContext(Dispatchers.IO) {
             RemoteStateBackup.save(context, info.target.deviceId, info.target.firmwareId,
                 info.target.userId, states, System.currentTimeMillis())
@@ -274,6 +298,14 @@ internal class RemoteAndroidController(private val context: Context, private val
         }
         val pending = journalFile(info.target.deviceId)
         require(!pending.exists()) { "Há operação anterior sem confirmação. Não serão feitas novas alterações." }
+        val actualState = withContext(Dispatchers.IO) { exactState(s, app.packageName) }
+        require(actualState.effectivelyEnabled == app.enabled) {
+            "Divergência entre estado ativo e estado do gerenciador Android."
+        }
+        val originalState = backup.states.first { it.packageName == pkg }.enabledSetting
+        val desiredState = if (restoring) originalState else if (enable)
+            RemoteEnabledState.ENABLED else RemoteEnabledState.DISABLED_USER
+        if (actualState == desiredState) return@withLock "O aplicativo já está no estado exato solicitado."
         val verdict = RemoteAndroidPolicy.evaluate(info.target, app,
             if (enable) RemoteOperation.ENABLE else RemoteOperation.DISABLE,
             backup.receipt(), app.enabled, System.currentTimeMillis(), restoring = restoring)
@@ -288,22 +320,25 @@ internal class RemoteAndroidController(private val context: Context, private val
             val payload = JSONObject().put("device", info.target.deviceId)
                 .put("firmware", info.target.firmwareId).put("package", pkg)
                 .put("previouslyEnabled", app.enabled).put("requestedEnabled", enable)
+                .put("previousState", actualState.name).put("requestedState", desiredState.name)
                 .put("startedAtMs", System.currentTimeMillis()).toString()
             pending.outputStream().use { out ->
                 out.write(payload.encodeToByteArray()); out.flush()
                 (out as java.io.FileOutputStream).fd.sync()
             }
         }
-        val command = if (enable) "pm enable --user 0 $pkg" else "pm disable-user --user 0 $pkg"
+        val command = "pm " + desiredState.shellVerb + " --user 0 " + pkg
         val output = s.exec(ShellLine(command), ExecSpec(timeoutMs = 12000L, idleTimeoutMs = 6000L))
         if (output.exit != 0 || output.truncated) {
             error("O Android recusou a alteração. Verifique o estado do pacote antes de tentar novamente.")
         }
         val verified = withContext(Dispatchers.IO) { snapshot(s) }
         val actual = verified.apps.firstOrNull { it.packageName.value == pkg }
+        val finalState = withContext(Dispatchers.IO) { exactState(s, app.packageName) }
         if (verified.target.deviceId != info.target.deviceId ||
-            verified.target.firmwareId != info.target.firmwareId || actual?.enabled != enable)
-            error("Pós-condição não confirmada. A operação permanece pendente de reconciliação.")
+            verified.target.firmwareId != info.target.firmwareId ||
+            actual?.enabled != desiredState.effectivelyEnabled || finalState != desiredState)
+            error("Estado exato não confirmado. A operação permanece pendente de reconciliação.")
         withContext(Dispatchers.IO) {
             require(pending.delete()) { "Estado aplicado, mas a limpeza do diário falhou" }
         }
@@ -326,10 +361,13 @@ internal class RemoteAndroidController(private val context: Context, private val
         val p = pending.getString("package")
         val actual = info.apps.firstOrNull { it.packageName.value == p }
             ?: error("Pacote desapareceu; preservar o diário para análise")
-        val previous = pending.getBoolean("previouslyEnabled")
-        val requested = pending.getBoolean("requestedEnabled")
-        require(actual.enabled == previous || actual.enabled == requested) {
-            "Estado não reconhecido; preservar diário"
+        val previous = RemoteEnabledState.ofName(pending.getString("previousState"))
+            ?: error("Diário incompatível: estado anterior ausente.")
+        val requested = RemoteEnabledState.ofName(pending.getString("requestedState"))
+            ?: error("Diário incompatível: estado solicitado ausente.")
+        val verified = withContext(Dispatchers.IO) { exactState(s, actual.packageName) }
+        require(verified == previous || verified == requested) {
+            "Estado exato não reconhecido; diário preservado"
         }
         withContext(Dispatchers.IO) { require(file.delete()) { "Falha ao remover diário reconciliado" } }
         known = info

@@ -18,8 +18,8 @@ class RemoteStateBackupTest {
     private val firmware = "c".repeat(64)
     private val device = "abcdef0123456789"
     private val states = listOf(
-        RemoteStateBackup.State("com.example.game", true),
-        RemoteStateBackup.State("org.example.reader", false)
+        RemoteStateBackup.State("com.example.game", RemoteEnabledState.DEFAULT),
+        RemoteStateBackup.State("org.example.reader", RemoteEnabledState.DISABLED_USER)
     )
 
     @Test fun persistedAndExportedBackupVerifiesHashes() {
