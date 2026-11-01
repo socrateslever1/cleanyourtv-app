@@ -170,7 +170,7 @@ fun SecureWindow(active: Boolean) {
 }
 
 @Composable
-fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
+fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit, unfinishedSetup: TvId? = null) {
     val backStack = rememberNavBackStack(start)
     val snack = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -270,6 +270,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
                         graph = graph,
                         onSelectTv = { go("manage/${it.value}") },
                         onAddTv = { go("setup") },
+                        onResumeSetup = unfinishedSetup?.let { id -> { go("setup/${id.value}") } },
                         onOtherAndroid = { showRemoteAndroid = true },
                         onWatch = { showWearInspector = true },
                         onThisPhone = { showPhoneInspector = true },

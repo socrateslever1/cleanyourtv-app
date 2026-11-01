@@ -37,9 +37,11 @@ class MainActivity : ComponentActivity() {
             // whatever the phone's own mode. The light tokens stay in :ui:design, unused.
             CytTheme(darkTheme = true) {
                 var start by remember { mutableStateOf<Dest?>(null) }
+                var unfinishedSetup by remember { mutableStateOf<tv.cleanyour.core.model.TvId?>(null) }
                 LaunchedEffect(Unit) {
                     graph.tvs.load()
                     val destination = resolveStart(graph.tvs.tvs.value, graph.seams.journal)
+                    unfinishedSetup = (destination as? tv.cleanyour.core.flows.StartDestination.ContinueSetup)?.tvId
                     // A paused transaction must be recoverable immediately.
                     // Otherwise never assume that a previously registered TV is
                     // the device the person wants to change this time.
@@ -50,7 +52,7 @@ class MainActivity : ComponentActivity() {
                 }
                 val s = start
                 if (s == null) Box(Modifier.fillMaxSize().background(CytTheme.colors.bg))
-                else AppRoot(graph, s, onExit = { finish() })
+                else AppRoot(graph, s, onExit = { finish() }, unfinishedSetup = unfinishedSetup)
             }
         }
     }

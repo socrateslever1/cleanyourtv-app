@@ -31,6 +31,7 @@ internal fun DevicePickerScreen(
     graph: AppGraph,
     onSelectTv: (TvId) -> Unit,
     onAddTv: () -> Unit,
+    onResumeSetup: (() -> Unit)? = null,
     onOtherAndroid: () -> Unit,
     onWatch: () -> Unit,
     onThisPhone: () -> Unit,
@@ -46,6 +47,14 @@ internal fun DevicePickerScreen(
         )
         Overline("TVs e Google TV", Modifier.padding(bottom = 8.dp, start = 4.dp))
         ListGroup {
+            if (onResumeSetup != null) {
+                ListRow(
+                    title = "Retomar configuração inacabada",
+                    subtitle = "Continue as escolhas já salvas, sem recomeçar a configuração.",
+                    onClick = onResumeSetup,
+                )
+                ListDivider()
+            }
             if (televisions.isEmpty()) {
                 ListRow("Nenhuma TV cadastrada", subtitle = "Adicione uma TV para começar.")
                 ListDivider()
