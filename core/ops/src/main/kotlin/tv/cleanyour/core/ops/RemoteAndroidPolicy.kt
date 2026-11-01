@@ -82,6 +82,7 @@ object RemoteAndroidPolicy {
         backup: RemoteRestoreReceipt?,
         expectedEnabled: Boolean,
         nowMs: Long,
+        restoring: Boolean = false,
     ): RemoteVerdict {
         fun no(why: String) = RemoteVerdict.Rejected(why)
         if (!target.authenticated) return no("ADB não autenticado")
@@ -112,7 +113,7 @@ object RemoteAndroidPolicy {
             backup.userId != target.userId)
             return no("Backup é de outro dispositivo, usuário ou firmware")
         val age = nowMs - backup.capturedAtMs
-        if (age !in 0..MAX_BACKUP_AGE_MS) return no("Backup desatualizado")
+        if (age < 0L || (!restoring && age > MAX_BACKUP_AGE_MS)) return no("Backup desatualizado")
         if (app.enabled != expectedEnabled) return no("Estado do pacote mudou; nova leitura necessária")
         if (app.enabled == (operation == RemoteOperation.ENABLE))
             return RemoteVerdict.AlreadyInRequestedState

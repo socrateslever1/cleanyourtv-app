@@ -192,7 +192,7 @@ internal class RemoteAndroidController(private val context: Context, private val
     private fun journalFile(deviceId: String) = File(context.filesDir, "remote-state-v1/$deviceId.pending")
 
     @OptIn(RawShell::class)
-    suspend fun change(pkg: String, enable: Boolean): String = lock.withLock {
+    suspend fun change(pkg: String, enable: Boolean, restoring: Boolean = false): String = lock.withLock {
         val s = session ?: error("Conecte o aparelho.")
         val info = withContext(Dispatchers.IO) { snapshot(s) }
         val former = known?.target ?: error("Identidade não registrada")
@@ -205,11 +205,14 @@ internal class RemoteAndroidController(private val context: Context, private val
         val backup = withContext(Dispatchers.IO) {
             RemoteStateBackup.read(context, info.target.deviceId)
         } ?: error("Crie backup antes de alterar este dispositivo.")
+        require(backup.states.any { it.packageName == pkg }) {
+            "O pacote não consta do backup; crie outro antes de modificá-lo."
+        }
         val pending = journalFile(info.target.deviceId)
         require(!pending.exists()) { "Há operação anterior sem confirmação. Não serão feitas novas alterações." }
         val verdict = RemoteAndroidPolicy.evaluate(info.target, app,
             if (enable) RemoteOperation.ENABLE else RemoteOperation.DISABLE,
-            backup.receipt(), app.enabled, System.currentTimeMillis())
+            backup.receipt(), app.enabled, System.currentTimeMillis(), restoring = restoring)
         when (verdict) {
             is RemoteVerdict.Rejected -> error(verdict.reason)
             RemoteVerdict.AlreadyInRequestedState -> return@withLock "O aplicativo já está no estado solicitado."
@@ -272,7 +275,7 @@ internal class RemoteAndroidController(private val context: Context, private val
     suspend fun restore(pkg: String): String {
         val b = loadBackup() ?: error("Sem backup.")
         val state = b.states.firstOrNull { it.packageName == pkg } ?: error("Pacote ausente do backup")
-        return change(pkg, state.enabled)
+        return change(pkg, state.enabled, restoring = true)
     }
 
     suspend fun disconnect() = lock.withLock {

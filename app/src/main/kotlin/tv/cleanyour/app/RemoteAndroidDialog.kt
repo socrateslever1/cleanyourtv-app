@@ -103,7 +103,9 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
             text = { Text("Pacote: $pkg\nO sistema exige backup, identidade, firmware e confirmação antes de alterar. O Android poderá recusar a operação.") },
             confirmButton = {
                 TextButton(enabled = !busy, onClick = { run {
-                    message = manager.change(pkg, enable)
+                    val prior = backup?.states?.firstOrNull { it.packageName == pkg }
+                    message = if (prior != null && prior.enabled == enable) manager.restore(pkg)
+                        else manager.change(pkg, enable)
                     inventory = manager.refresh()
                     selected = null
                 } }) { Text("Confirmar") }
@@ -164,7 +166,8 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
                         val eligible = info.canWrite && found != null &&
                             RemoteAndroidPolicy.evaluate(info.target, app,
                                 if (desired) RemoteOperation.ENABLE else RemoteOperation.DISABLE,
-                                found.receipt(), app.enabled, System.currentTimeMillis()) ==
+                                found.receipt(), app.enabled, System.currentTimeMillis(),
+                                restoring = found.states.any { it.packageName == pkg && it.enabled != app.enabled }) ==
                                     RemoteVerdict.Allowed
                         Text(pkg + if (app.enabled) " — ativo" else " — desativado")
                         TextButton(enabled = !busy && eligible, onClick = { selected = pkg to desired }) {

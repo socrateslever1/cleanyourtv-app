@@ -71,6 +71,13 @@ class RemoteAndroidPolicyTest {
         assertTrue(check(b = backup.copy(capturedAtMs = now - 16 * 60000L)) is RemoteVerdict.Rejected)
     }
 
+    @Test fun oldBackupMayOnlyAuthorizeExplicitRestoration() {
+        val old = backup.copy(capturedAtMs = now - 60 * 60000L)
+        assertTrue(check(b = old) is RemoteVerdict.Rejected)
+        assertEquals(RemoteVerdict.Allowed, RemoteAndroidPolicy.evaluate(
+            target, app, RemoteOperation.DISABLE, old, true, now, restoring = true))
+    }
+
     @Test fun packageMustBeThirdPartyAndNotCritical() {
         assertTrue(check(a = app.copy(userInstalled = false)) is RemoteVerdict.Rejected)
         assertTrue(check(a = app.copy(systemApp = true)) is RemoteVerdict.Rejected)
