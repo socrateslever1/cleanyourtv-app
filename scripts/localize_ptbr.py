@@ -130,7 +130,7 @@ BY_KEY = {
  "found_customise":"Personalizar",
  "found_home_casting":"Neste dispositivo Google, mudar a tela inicial exige desativar o assistente de configuração, o que pode interromper a transmissão do celular após a reinicialização. Por segurança, manteremos a tela inicial original e removeremos apenas itens dispensáveis.",
  "found_review_title":"Escolha o que desativar",
- "found_review_explanation":"Abra cada categoria e toque no serviço para escolher Desativar ou Manter. Nada será alterado na TV até você confirmar a limpeza.",
+ "found_review_explanation":"Abra cada categoria e toque em um serviço para ler o que faz, os riscos de desativá-lo e como reverter. A TV não será alterada antes da revisão e confirmação final.",
  "found_advanced_details":"Detalhes avançados e aparência",
  "found_protected_title":"Serviços protegidos do sistema",
  "found_protected_subtitle":"Permanecem ativos. Consulte a lista e os motivos.",
