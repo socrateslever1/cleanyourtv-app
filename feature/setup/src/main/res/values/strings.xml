@@ -73,7 +73,7 @@
     <string name="found_make_clean">Make it clean</string>
     <string name="found_customise">Customise</string>
     <string name="found_review_title">Choose what to switch off</string>
-    <string name="found_review_explanation">Tap a group, then tap each service to choose Off or Kept. Nothing changes on the TV until you apply the clean-up.</string>
+    <string name="found_review_explanation">Expand a group, then tap a service to read its purpose and potential impact before changing its selection. Review all proposed changes before applying.</string>
     <string name="found_advanced_details">Advanced details and appearance</string>
     <string name="found_protected_title">Protected system services</string>
     <string name="found_protected_subtitle">Always kept. View the list and reasons.</string>

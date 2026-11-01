@@ -27,6 +27,20 @@ class NavigationTest {
         assertEquals(listOf<NavKey>(Dest.Setup()), stack)
     }
 
+    @Test fun registeredTvMustBeChosenAndBackReturnsToDevicePicker() {
+        val stack = mutableListOf<NavKey>(Dest.Devices)
+        assertTrue(applyRoute(stack, "manage/0123456789abcdef", noTvs = false))
+        assertEquals(listOf<NavKey>(Dest.Devices, Dest.Manage("0123456789abcdef")), stack)
+        assertTrue(applyRoute(stack, "back", noTvs = false))
+        assertEquals(listOf<NavKey>(Dest.Devices), stack)
+    }
+
+    @Test fun deviceSelectionRemainsReachableAfterEnteringTvSettings() {
+        val stack = mutableListOf<NavKey>(Dest.Manage("0123456789abcdef"), Dest.AppSettings)
+        assertTrue(applyRoute(stack, "devices", noTvs = false))
+        assertEquals(listOf<NavKey>(Dest.Devices), stack)
+    }
+
     // STORES-PLAN 1: without add-ons (the Play build) the modules route opens nothing.
     @Test fun theModulesRouteNeedsAddOns() {
         val stack = mutableListOf<NavKey>(Dest.Manage("0123456789abcdef"))

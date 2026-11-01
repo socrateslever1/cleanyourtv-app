@@ -80,6 +80,7 @@ import tv.cleanyour.feature.setup.SetupFlow
 // Navigation 3 keys (ARCHITECTURE 2.2): serializable, ids only, never payloads, so the back stack
 // itself survives process death and every screen rebuilds its state from disk.
 @Serializable sealed interface Dest : NavKey {
+    @Serializable data object Devices : Dest
     @Serializable data class Setup(val tvId: String? = null, val planId: String? = null) : Dest
     @Serializable data class Manage(val tvId: String? = null) : Dest
     @Serializable data class SwitchedOff(val tvId: String) : Dest
@@ -109,6 +110,7 @@ internal fun applyRoute(stack: MutableList<NavKey>, route: String, noTvs: Boolea
     val parts = route.split('/')
     val id = parts.getOrNull(1)
     val dest: Dest? = when (parts[0]) {
+        "devices" -> Dest.Devices
         "manage" -> Dest.Manage(id)
         "returning" -> { stack.add(Dest.Manage(null)); return true }
         "setup" -> Dest.Setup(id)
@@ -126,7 +128,12 @@ internal fun applyRoute(stack: MutableList<NavKey>, route: String, noTvs: Boolea
     }
     when {
         route == "home" || route == "welcome" -> { stack.clear(); stack.add(if (noTvs) Dest.Setup() else Dest.Manage(null)) }
-        dest is Dest.Manage -> { stack.clear(); stack.add(dest) }
+        dest is Dest.Devices -> { stack.clear(); stack.add(dest) }
+        dest is Dest.Manage -> {
+            // A selected TV should return to the device chooser on Back.
+            if (stack.lastOrNull() is Dest.Devices) stack.add(dest)
+            else { stack.clear(); stack.add(dest) }
+        }
         dest != null -> stack.add(dest)
     }
     return true
@@ -163,7 +170,7 @@ fun SecureWindow(active: Boolean) {
 }
 
 @Composable
-fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
+fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit, unfinishedSetup: TvId? = null) {
     val backStack = rememberNavBackStack(start)
     val snack = remember { SnackbarHostState() }
     val context = LocalContext.current
@@ -172,6 +179,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
     var apkInstallTarget by remember { mutableStateOf<TvId?>(null) }
     var showWearInspector by remember { mutableStateOf(false) }
     var showPhoneInspector by remember { mutableStateOf(false) }
+    var showRemoteAndroid by remember { mutableStateOf(false) }
     var tvToolsTarget by remember { mutableStateOf<TvId?>(null) }
     if (graph.store.flavour == "full") UpdateNotifier()
 
@@ -257,6 +265,17 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
             onBack = { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) else onExit() },
             entryDecorators = listOf(rememberSaveableStateHolderNavEntryDecorator(), rememberViewModelStoreNavEntryDecorator()),
             entryProvider = entryProvider {
+                entry<Dest.Devices> {
+                    DevicePickerScreen(
+                        graph = graph,
+                        onSelectTv = { go("manage/${it.value}") },
+                        onAddTv = { go("setup") },
+                        onResumeSetup = unfinishedSetup?.let { id -> { go("setup/${id.value}") } },
+                        onOtherAndroid = { showRemoteAndroid = true },
+                        onWatch = { showWearInspector = true },
+                        onThisPhone = { showPhoneInspector = true },
+                    )
+                }
                 entry<Dest.Setup> { key ->
                     val start = when {
                         key.planId != null && key.tvId != null -> SetupStart.Resume(TvId(key.tvId), PlanId(key.planId))
@@ -276,7 +295,8 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
                     val m = rememberMachine("manage:${key.tvId}") { graph.manage(it, key.tvId?.let(::TvId)) }
                     val state by m.state.collectAsStateWithLifecycle()
                     LaunchedEffect(m) { m.effects.collect { onManageEffect(it) } }
-                    ManageScreen(state, m::dispatch, onInstallApk = { apkInstallTarget = it }, onTvTools = { tvToolsTarget = it })
+                    ManageScreen(state, m::dispatch, onInstallApk = { apkInstallTarget = it },
+                        onTvTools = { tvToolsTarget = it }, onChooseDevice = { go("devices") })
                 }
                 entry<Dest.SwitchedOff> { key ->
                     val m = rememberMachine("off:${key.tvId}") { graph.switchedOff(it, TvId(key.tvId)) }
@@ -344,7 +364,8 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
                         onOpenPhoneApps = {
                             runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)) }
                         },
-                        onInspectWear = { showWearInspector = true })
+                        onInspectWear = { showWearInspector = true },
+                        onManageRemote = { showRemoteAndroid = true })
                 }
             },
         )
@@ -366,6 +387,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
         apkInstallTarget?.let { id -> TvApkInstallDialog(graph, id) { apkInstallTarget = null } }
         if (showWearInspector) WearOsReadOnlyDialog(graph) { showWearInspector = false }
         if (showPhoneInspector) PhoneDiagnosticsDialog(context) { showPhoneInspector = false }
+        if (showRemoteAndroid) RemoteAndroidDialog(graph) { showRemoteAndroid = false }
         tvToolsTarget?.let { id -> TvToolsDialog(graph, id,
             onInstallApk = { tvToolsTarget = null; apkInstallTarget = id },
             onClose = { tvToolsTarget = null }) }
