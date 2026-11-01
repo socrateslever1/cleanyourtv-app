@@ -93,7 +93,7 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
                 "Backup não pertence a este dispositivo, firmware e usuário."
             }
             backup = withContext(Dispatchers.IO) { RemoteStateBackup.saveImported(context, loaded) }
-            message = "Backup autenticado por SHA-256 e importado. Restaure apenas os pacotes desejados."
+            message = "Integridade do backup verificada por SHA-256; a origem não é autenticada por esse hash. Confira os pacotes antes de restaurar."
         }
     }
 
