@@ -173,7 +173,16 @@ internal object RemoteStateBackup {
     /** Imported snapshots are stored only after validation; a new hash is never trusted blindly. */
     fun saveImported(context: Context, record: Record): Record {
         require(sha256(snapshot(record)) == record.sha256) { "Conteúdo importado alterado" }
-        return save(context, record.deviceId, record.firmwareId,
-            record.userId, record.states, record.capturedAtMs)
+        // A valid imported ZIP is not authorization to replace the only local
+        // pre-change state. A distinct snapshot requires a separate, reviewed
+        // migration workflow; silently overwriting would make undo impossible.
+        val existing = read(context, record.deviceId)
+        require(existing == null || (existing.sha256 == record.sha256 &&
+            existing.firmwareId == record.firmwareId &&
+            existing.userId == record.userId)) {
+            "Já existe um backup original diferente. Preserve-o e restaure suas alterações antes de importar outro."
+        }
+        return if (existing != null) existing else save(context, record.deviceId,
+            record.firmwareId, record.userId, record.states, record.capturedAtMs)
     }
 }

@@ -37,6 +37,20 @@ class RemoteStateBackupTest {
         assertEquals(saved.sha256, RemoteStateBackup.saveImported(context, imported).sha256)
     }
 
+    @Test fun importingAnotherValidBackupNeverOverwritesOriginal() {
+        val id = "abcdabcdabcdabcd"
+        val original = RemoteStateBackup.save(context, id, firmware, 0, states, 20000L)
+        val alternative = RemoteStateBackup.save(context, id, firmware, 0,
+            states.map { if (it.packageName == "com.example.game")
+                it.copy(enabledSetting = RemoteEnabledState.DISABLED_USER, enabled = false)
+                else it }, 30000L)
+        var rejected = false
+        try { RemoteStateBackup.saveImported(context, original) }
+        catch (_: IllegalArgumentException) { rejected = true }
+        assertTrue("Import may not overwrite a different saved baseline", rejected)
+        assertEquals(alternative.sha256, RemoteStateBackup.read(context, id)?.sha256)
+    }
+
     @Test fun forbidsUnexpectedZipEntriesAndDuplicates() {
         for (entry in listOf("../snapshot.json", "/etc/passwd", "apks/secret.apk")) {
             val zip = ByteArrayOutputStream()
