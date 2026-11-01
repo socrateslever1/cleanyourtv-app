@@ -106,11 +106,33 @@ internal object Identity {
         )
     }
 
+    @OptIn(RawShell::class)
     suspend fun read(conn: AdbConnection, clock: Clock): TvIdentity {
         val r = Exec.run(conn, SessionLines.GETPROP, ExecSpec(timeoutMs = SessionConfig.IDENTITY_TIMEOUT_MS, idleTimeoutMs = SessionConfig.IDENTITY_IDLE_MS), clock)
-        if (r.exit != 0) throw protocolError("getprop failed on the TV (exit ${r.exit})")
-        return from(parseProps(r.stdout), conn.features, conn.maxPayload)
+        if (r.exit != 0 || r.truncated) throw protocolError("getprop failed or was truncated (exit ${r.exit})")
+        val props = parseProps(r.stdout)
+        if (props["ro.serialno"].isNullOrBlank()) {
+            // Keep the pinned television identity formula untouched. On a phone
+            // or watch, ro.serialno may be restricted to privileged callers.
+            // A distinct, validated Android ID is a fallback ONLY off-TV.
+            val characteristics = props["ro.build.characteristics"].orEmpty().lowercase()
+            if (characteristics.split(',').any { it.trim() in setOf("tv", "television") }) {
+                throw protocolError("the TV reports no serial number")
+            }
+            val idResult = Exec.run(conn, ShellLine("settings get secure android_id"),
+                ExecSpec(timeoutMs = SessionConfig.IDENTITY_TIMEOUT_MS, idleTimeoutMs = SessionConfig.IDENTITY_IDLE_MS), clock)
+            val androidId = idResult.stdout.trim().lowercase()
+            if (idResult.exit != 0 || idResult.truncated || !ANDROID_ID.matches(androidId) ||
+                androidId == "9774d56d682e549c") {
+                throw protocolError("no verifiable serial or Android ID")
+            }
+            // Never persist the raw Android ID; TvId remains the truncated SHA-256.
+            return from(props + ("ro.serialno" to ("aid:" + androidId)), conn.features, conn.maxPayload)
+        }
+        return from(props, conn.features, conn.maxPayload)
     }
+
+    private val ANDROID_ID = Regex("^[a-f0-9]{16}$")
 }
 
 // Exponential with full jitter: base 500 ms, factor 2, cap 8 s (ARCHITECTURE 3.4).
