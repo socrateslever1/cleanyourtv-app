@@ -140,9 +140,15 @@ internal class RemoteAndroidController(private val context: Context, private val
             kind in setOf(RemoteKind.PHONE, RemoteKind.TABLET) && currentUser == 0 && protectionsKnown, explanation)
     }
 
+    private suspend fun closeNonTvSession() {
+        val previous = session ?: return
+        // Never terminate a session that belongs to the existing TV manager.
+        if (graph.tvs.tvs.value.none { it.id == previous.tvId }) previous.close()
+    }
+
     suspend fun connect(ip: String): Inventory = lock.withLock {
         require(WearOsReadOnly.localIpv4(ip)) { "Informe um IP privado válido da rede local." }
-        session?.close()
+        closeNonTvSession()
         session = null
         known = null
         when (val opened = graph.sessions.open(Endpoint.PlainTcp(ip.trim(), 5555), null) {}) {
@@ -154,7 +160,7 @@ internal class RemoteAndroidController(private val context: Context, private val
                     session = s; known = info
                     info
                 } catch (e: Exception) {
-                    s.close()
+                    if (graph.tvs.tvs.value.none { it.id == s.tvId }) s.close()
                     throw e
                 }
             }
@@ -279,6 +285,8 @@ internal class RemoteAndroidController(private val context: Context, private val
     }
 
     suspend fun disconnect() = lock.withLock {
-        session?.close(); session = null; known = null
+        closeNonTvSession()
+        session = null
+        known = null
     }
 }
