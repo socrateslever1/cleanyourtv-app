@@ -104,5 +104,6 @@ class RemoteAndroidPolicyTest {
         assertTrue(check(expected = false) is RemoteVerdict.Rejected)
         assertTrue(check(t = target.copy(userId = 10)) is RemoteVerdict.Rejected)
         assertTrue(check(t = target.copy(sdk = 25)) is RemoteVerdict.Rejected)
+        assertTrue(check(t = target.copy(sdk = 30)) is RemoteVerdict.Rejected)
     }
 }

@@ -111,7 +111,8 @@ internal object Identity {
         val r = Exec.run(conn, SessionLines.GETPROP, ExecSpec(timeoutMs = SessionConfig.IDENTITY_TIMEOUT_MS, idleTimeoutMs = SessionConfig.IDENTITY_IDLE_MS), clock)
         if (r.exit != 0 || r.truncated) throw protocolError("getprop failed or was truncated (exit ${r.exit})")
         val props = parseProps(r.stdout)
-        if (props["ro.serialno"].isNullOrBlank()) {
+        val serial = props["ro.serialno"]?.trim()?.lowercase().orEmpty()
+        if (serial.isBlank() || serial in setOf("unknown", "null", "none", "0123456789abcdef")) {
             // Keep the pinned television identity formula untouched. On a phone
             // or watch, ro.serialno may be restricted to privileged callers.
             // A distinct, validated Android ID is a fallback ONLY off-TV.

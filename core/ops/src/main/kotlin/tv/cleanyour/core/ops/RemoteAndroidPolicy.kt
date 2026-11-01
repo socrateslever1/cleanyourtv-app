@@ -88,7 +88,7 @@ object RemoteAndroidPolicy {
         if (!target.authenticated) return no("ADB não autenticado")
         if (!target.deviceId.validId() || !target.firmwareId.validId())
             return no("Identidade ou firmware não verificados")
-        if (target.sdk < 28 || target.userId !in 0..9999)
+        if (target.sdk < 31 || target.userId !in 0..9999)
             return no("Versão do Android ou usuário não suportado")
         if (target.kind == RemoteKind.TV) return no("TV exige o planejador específico existente")
         if (target.kind == RemoteKind.UNKNOWN) return no("Plataforma desconhecida")
