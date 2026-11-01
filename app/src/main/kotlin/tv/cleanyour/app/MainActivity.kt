@@ -39,7 +39,14 @@ class MainActivity : ComponentActivity() {
                 var start by remember { mutableStateOf<Dest?>(null) }
                 LaunchedEffect(Unit) {
                     graph.tvs.load()
-                    start = startKey(resolveStart(graph.tvs.tvs.value, graph.seams.journal))
+                    val destination = resolveStart(graph.tvs.tvs.value, graph.seams.journal)
+                    // A paused transaction must be recoverable immediately.
+                    // Otherwise never assume that a previously registered TV is
+                    // the device the person wants to change this time.
+                    start = when (destination) {
+                        is tv.cleanyour.core.flows.StartDestination.ResumeRun -> startKey(destination)
+                        else -> Dest.Devices
+                    }
                 }
                 val s = start
                 if (s == null) Box(Modifier.fillMaxSize().background(CytTheme.colors.bg))
