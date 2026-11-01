@@ -125,3 +125,9 @@ object RemoteAndroidPolicy {
             it.isLetterOrDigit() || it in "._:-"
         }
 }
+
+/** Refuses destroying the only verified baseline while an earlier app differs. */
+object RemoteBaselineGuard {
+    fun changedPackages(original: Map<String, Boolean>, live: Map<String, Boolean>): List<String> =
+        original.filter { (pkg, enabled) -> live[pkg] != enabled }.keys.sorted()
+}

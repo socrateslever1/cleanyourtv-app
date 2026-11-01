@@ -14,6 +14,7 @@ import tv.cleanyour.core.model.PackageName
 import tv.cleanyour.core.model.RawShell
 import tv.cleanyour.core.model.ShellLine
 import tv.cleanyour.core.ops.RemoteAndroidPolicy
+import tv.cleanyour.core.ops.RemoteBaselineGuard
 import tv.cleanyour.core.ops.RemoteApp
 import tv.cleanyour.core.ops.RemoteCapability
 import tv.cleanyour.core.ops.RemoteKind
@@ -204,11 +205,12 @@ internal class RemoteAndroidController(private val context: Context, private val
             RemoteStateBackup.read(context, info.target.deviceId)
         }
         val currentStates = info.apps.associate { it.packageName.value to it.enabled }
-        val diverged = previous?.states?.firstOrNull {
-            currentStates[it.packageName] != it.enabled
-        }
-        require(diverged == null) {
-            "O estado atual difere do backup anterior (${diverged?.packageName}). " +
+        val changed = previous?.let { old ->
+            RemoteBaselineGuard.changedPackages(
+                old.states.associate { it.packageName to it.enabled }, currentStates)
+        }.orEmpty()
+        require(changed.isEmpty()) {
+            "O estado atual difere do backup anterior (${changed.firstOrNull()}). " +
                 "Restaure as alterações antes de substituir a referência de segurança."
         }
         val states = info.apps.map { RemoteStateBackup.State(it.packageName.value, it.enabled) }

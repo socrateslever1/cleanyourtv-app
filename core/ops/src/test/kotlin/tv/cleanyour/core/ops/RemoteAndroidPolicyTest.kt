@@ -88,6 +88,18 @@ class RemoteAndroidPolicyTest {
         assertTrue(check(t = target.copy(protectedPackages = setOf(app.packageName))) is RemoteVerdict.Rejected)
     }
 
+    @Test fun neverOverwriteBaselineWhenOriginalAppWasChangedOrRemoved() {
+        val original = mapOf("com.example.alpha" to true, "com.example.beta" to false)
+        assertEquals(listOf("com.example.alpha"),
+            RemoteBaselineGuard.changedPackages(original,
+                mapOf("com.example.alpha" to false, "com.example.beta" to false)))
+        assertEquals(listOf("com.example.beta"),
+            RemoteBaselineGuard.changedPackages(original, mapOf("com.example.alpha" to true)))
+        assertEquals(emptyList<String>(),
+            RemoteBaselineGuard.changedPackages(original,
+                original + ("com.example.new" to true)))
+    }
+
     @Test fun rejectsStalePackageStateAndMultiuserMismatches() {
         assertTrue(check(expected = false) is RemoteVerdict.Rejected)
         assertTrue(check(t = target.copy(userId = 10)) is RemoteVerdict.Rejected)
