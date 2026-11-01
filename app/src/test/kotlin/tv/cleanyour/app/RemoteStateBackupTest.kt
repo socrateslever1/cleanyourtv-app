@@ -19,7 +19,9 @@ class RemoteStateBackupTest {
     private val device = "abcdef0123456789"
     private val states = listOf(
         RemoteStateBackup.State("com.example.game", RemoteEnabledState.DEFAULT, true),
-        RemoteStateBackup.State("org.example.reader", RemoteEnabledState.DISABLED_USER, false)
+        RemoteStateBackup.State("org.example.reader", RemoteEnabledState.DISABLED_USER, false),
+        // DEFAULT may be disabled by the app manifest. Preserve both facts.
+        RemoteStateBackup.State("net.example.manifestdisabled", RemoteEnabledState.DEFAULT, false)
     )
 
     @Test fun persistedAndExportedBackupVerifiesHashes() {
