@@ -226,4 +226,6 @@
     <string name="report_unavailable">We need to read this TV once before we can make its report. Set it up or connect to it, then try again.</string>
     <string name="manage_tv_tools">TV tools and recent apps</string>
     <string name="manage_tv_tools_note">View recent tasks and compare storage before and after</string>
+    <string name="appsettings_other_android">Other Android devices</string>
+    <string name="appsettings_other_android_note">Authorized ADB: backup and enable or disable third-party apps</string>
 </resources>

@@ -81,6 +81,8 @@ BY_KEY = {
  "appsettings_phone_section":"Este celular Android",
  "appsettings_phone_storage":"Analisar armazenamento",
  "appsettings_phone_storage_detail":"Abrir as configurações do Android para verificar downloads, cache e espaço disponível.",
+ "appsettings_other_android":"Gerenciar outro Android",
+ "appsettings_other_android_note":"Conexão ADB autorizada, backup e ativação ou desativação de aplicativos",
  "appsettings_phone_apps":"Gerenciar aplicativos",
  "appsettings_phone_apps_detail":"Abrir os aplicativos do Android para desinstalar ou restringir os não utilizados, preservando os serviços críticos.",
  "app_channel_setup_description":"Mostra o andamento das alterações feitas na TV e avisa quando você precisa olhar para ela.",

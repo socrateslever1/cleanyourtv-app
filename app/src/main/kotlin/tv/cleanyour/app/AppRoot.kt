@@ -172,6 +172,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
     var apkInstallTarget by remember { mutableStateOf<TvId?>(null) }
     var showWearInspector by remember { mutableStateOf(false) }
     var showPhoneInspector by remember { mutableStateOf(false) }
+    var showRemoteAndroid by remember { mutableStateOf(false) }
     var tvToolsTarget by remember { mutableStateOf<TvId?>(null) }
     if (graph.store.flavour == "full") UpdateNotifier()
 
@@ -344,7 +345,8 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
                         onOpenPhoneApps = {
                             runCatching { context.startActivity(Intent(android.provider.Settings.ACTION_MANAGE_APPLICATIONS_SETTINGS)) }
                         },
-                        onInspectWear = { showWearInspector = true })
+                        onInspectWear = { showWearInspector = true },
+                        onManageRemote = { showRemoteAndroid = true })
                 }
             },
         )
@@ -366,6 +368,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
         apkInstallTarget?.let { id -> TvApkInstallDialog(graph, id) { apkInstallTarget = null } }
         if (showWearInspector) WearOsReadOnlyDialog(graph) { showWearInspector = false }
         if (showPhoneInspector) PhoneDiagnosticsDialog(context) { showPhoneInspector = false }
+        if (showRemoteAndroid) RemoteAndroidDialog(graph) { showRemoteAndroid = false }
         tvToolsTarget?.let { id -> TvToolsDialog(graph, id,
             onInstallApk = { tvToolsTarget = null; apkInstallTarget = id },
             onClose = { tvToolsTarget = null }) }
