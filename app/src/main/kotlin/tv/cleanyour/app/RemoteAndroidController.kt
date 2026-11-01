@@ -86,7 +86,14 @@ internal class RemoteAndroidController(private val context: Context, private val
         val currentUser = read(s, "am get-current-user").toIntOrNull()
             ?: error("Usuário Android não identificado")
         val model = read(s, "getprop ro.product.model").take(90).ifEmpty { "Android" }
-        val deviceId = s.tvId.value
+        // Do not rely on ro.serialno: modern Android often hides it or returns
+        // a shared placeholder. Hash the stable shell-visible Android ID and
+        // model to avoid persisting identifiers in backups or telemetry.
+        val androidId = read(s, "settings get secure android_id").lowercase()
+        require(Regex("^[0-9a-f]{16}$").matches(androidId)) {
+            "O Android não forneceu identidade única verificável; alterações bloqueadas."
+        }
+        val deviceId = hash(androidId + ":" + s.identity.device).take(16)
         val firmware = hash(fingerprint)
         val installed = read(s, "pm list packages -3 --user $currentUser")
             .lineSequence().mapNotNull {
