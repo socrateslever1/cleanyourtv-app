@@ -204,6 +204,10 @@ internal class RemoteAndroidController(private val context: Context, private val
         val previous = withContext(Dispatchers.IO) {
             RemoteStateBackup.read(context, info.target.deviceId)
         }
+        require(previous == null || (previous.firmwareId == info.target.firmwareId &&
+            previous.userId == info.target.userId && previous.deviceId == info.target.deviceId)) {
+            "Backup anterior pertence a outro firmware ou usuário. Preserve o ZIP e faça uma revisão explícita antes de substituí-lo."
+        }
         val currentStates = info.apps.associate { it.packageName.value to it.enabled }
         val changed = previous?.let { old ->
             RemoteBaselineGuard.changedPackages(
