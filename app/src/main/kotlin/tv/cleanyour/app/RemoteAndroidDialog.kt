@@ -48,6 +48,7 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
     var message by remember { mutableStateOf("Conecte outro Android previamente autorizado por ADB TCP. Não é pareamento por código.") }
     var busy by remember { mutableStateOf(false) }
     var backup by remember { mutableStateOf<RemoteStateBackup.Record?>(null) }
+    var chosenApk by remember { mutableStateOf<String?>(null) }
 
     DisposableEffect(manager) {
         onDispose { graph.workScope.launch { manager.disconnect() } }
@@ -93,6 +94,19 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
             }
             backup = withContext(Dispatchers.IO) { RemoteStateBackup.saveImported(context, loaded) }
             message = "Backup autenticado por SHA-256 e importado. Restaure apenas os pacotes desejados."
+        }
+    }
+
+    val apkExport = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/vnd.android.package-archive")
+    ) { uri ->
+        val pkg = chosenApk
+        chosenApk = null
+        if (uri != null && pkg != null) run {
+            message = withContext(Dispatchers.IO) {
+                context.contentResolver.openOutputStream(uri)?.use { manager.exportApk(pkg, it) }
+                    ?: error("Não foi possível abrir o destino do APK.")
+            }
         }
     }
 
@@ -178,10 +192,14 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
                                 selected = pkg to found.states.first { it.packageName == pkg }.enabled
                             }) { Text("Restaurar estado do backup") }
                         }
+                        TextButton(enabled = !busy, onClick = {
+                            chosenApk = pkg
+                            apkExport.launch(pkg + ".apk")
+                        }) { Text("Salvar APK acessível") }
                         HorizontalDivider()
                     }
                 }
-                Text("Segurança: não modifica aplicativos de sistema. Wear OS permanece somente leitura até validação de firmware. APKs do dispositivo não são extraídos nesta versão.")
+                Text("Segurança: não modifica aplicativos de sistema. Wear OS permanece somente leitura até validação de firmware. APKs acessíveis e sem divisão podem ser salvos separadamente; dados privados não são copiados.")
             }
         },
         confirmButton = { TextButton(enabled = !busy, onClick = onClose) { Text("Fechar") } },

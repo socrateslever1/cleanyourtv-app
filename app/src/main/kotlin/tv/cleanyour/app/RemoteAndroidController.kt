@@ -295,6 +295,25 @@ internal class RemoteAndroidController(private val context: Context, private val
         return change(pkg, state.enabled, restoring = true)
     }
 
+    /** Export an APK only if the target is still the same authenticated device. */
+    suspend fun exportApk(packageName: String, output: java.io.OutputStream): String = lock.withLock {
+        val s = session ?: error("Conecte primeiro o dispositivo.")
+        val info = withContext(Dispatchers.IO) { snapshot(s) }
+        require(info.target.deviceId == known?.target?.deviceId &&
+            info.target.firmwareId == known?.target?.firmwareId &&
+            info.target.userId == 0) { "Identidade ou usuário Android mudou." }
+        require(info.target.kind != RemoteKind.TV && info.target.kind != RemoteKind.UNKNOWN) {
+            "Este recurso é destinado a celulares, tablets e relógios autorizados."
+        }
+        val app = info.apps.firstOrNull { it.packageName.value == packageName }
+            ?: error("Pacote de usuário não encontrado.")
+        val hold = s.hold()
+        try {
+            val hash = RemoteApkExtractor.export(context, s, app.packageName, output)
+            "APK copiado e verificado. SHA-256: " + hash
+        } finally { hold.close() }
+    }
+
     suspend fun disconnect() = lock.withLock {
         closeNonTvSession()
         session = null
