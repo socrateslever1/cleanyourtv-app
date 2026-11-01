@@ -17,7 +17,9 @@ import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -208,6 +210,7 @@ fun FoundScreen(
     val summary = state.plan.summary
     // Every switch-off of the plan, the home screen switch's own included (round 3).
     val off = summary.switchOffCount
+    var confirmImpactReview by rememberSaveable { mutableStateOf(false) }
     ScreenScaffold(
         Glow.Tv, modifier,
         topBar = { TopBar(extras, onBack = { actions.back() }) },
@@ -220,7 +223,7 @@ fun FoundScreen(
             if (summary.replacesLauncher) Banner(stringResource(R.string.found_replaces_launcher), BannerTone.INFO, Modifier.padding(bottom = 12.dp))
             SafetyLine(stringResource(R.string.found_safety), Modifier.padding(start = 4.dp, end = 4.dp, bottom = 14.dp))
             ActionColumn {
-                PrimaryButton(stringResource(R.string.found_make_clean), { actions.intent(SetupIntent.MakeItClean) }, loading = extras.starting)
+                PrimaryButton(stringResource(R.string.found_make_clean), { confirmImpactReview = true }, loading = extras.starting)
                 TertiaryButton(stringResource(R.string.found_customise), { actions.intent(SetupIntent.Open(Sheet.CUSTOMISE)) })
             }
         },
@@ -293,6 +296,40 @@ fun FoundScreen(
         }
         if (extras.noScreenLock) Body(stringResource(R.string.found_no_lock), Modifier.padding(start = 4.dp, top = 12.dp))
         Gap(8.dp)
+    }
+    if (confirmImpactReview) {
+        val affected = summary.groups.flatMap { it.rows }.filter { it.off }
+        AlertDialog(
+            onDismissRequest = { if (!extras.starting) confirmImpactReview = false },
+            title = { Text("Revise o impacto antes de aplicar") },
+            text = {
+                Column(Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Estes são os serviços que a TV poderá desativar. A função exata depende do modelo e do firmware.")
+                    if (affected.isEmpty()) Text("Nenhum serviço está marcado para desativação. Revise também as mudanças da tela inicial.")
+                    affected.forEach { row ->
+                        val impact = ServiceImpactCatalog.explain(row.pkg.value)
+                        Text(row.friendlyName + " — " + row.pkg.value)
+                        Text("Função: " + impact.purpose)
+                        Text("Efeito possível: " + impact.disabling)
+                        Text("Atenção: " + impact.caution)
+                    }
+                    Text("Recuperação: " + ServiceImpactCatalog.recovery)
+                    Text("A restauração precisa de um ponto de recuperação válido. Não há garantia de ausência de impactos.")
+                }
+            },
+            confirmButton = {
+                TextButton(enabled = !extras.starting, onClick = {
+                    confirmImpactReview = false
+                    actions.intent(SetupIntent.MakeItClean)
+                }) { Text("Confirmar alterações") }
+            },
+            dismissButton = {
+                TextButton(enabled = !extras.starting, onClick = { confirmImpactReview = false }) {
+                    Text("Voltar e revisar")
+                }
+            },
+        )
     }
     when (state.sheet) {
         Sheet.LIST, Sheet.CUSTOMISE -> CustomiseSheet(state, extras, actions, onCopyCommands)
@@ -470,7 +507,14 @@ internal fun ColumnScope.CustomiseContent(
     )
 }
 
-private fun RowSummary.toItem() = DiffItem(pkg.value, friendlyName, description, pkg.value, off, fixed = protected && off)
+private fun RowSummary.toItem() = DiffItem(
+    pkg.value,
+    friendlyName,
+    ServiceImpactCatalog.explain(pkg.value).purpose,
+    pkg.value,
+    off,
+    fixed = protected && off,
+)
 
 // A protected row that stays on: the "We keep these" group.
 private fun RowSummary.kept() = protected && !off
@@ -479,13 +523,53 @@ private fun RowSummary.kept() = protected && !off
 @Composable
 private fun GroupSection(g: GroupSummary, custom: Boolean, onCollapse: () -> Unit, onToggle: (RowSummary) -> Unit) {
     var expanded by rememberSaveable(g.id) { mutableStateOf(false) }
+    var selectedForReview by remember { mutableStateOf<RowSummary?>(null) }
     val visible = if (expanded || g.rows.size <= 6) g.rows.size else 4
     DiffGroupSection(
         DiffGroup(g.id, g.title, g.rows.map { it.toItem() }),
-        onToggle = { item -> g.rows.firstOrNull { it.pkg.value == item.key && !it.protected }?.let(onToggle) },
-        modifier = Modifier.padding(top = 16.dp), showPackageNames = custom, visibleCount = visible, onShowMore = { expanded = true },
+        // A row tap opens its impact BEFORE it can change even a draft choice.
+        onToggle = { item ->
+            selectedForReview = g.rows.firstOrNull {
+                it.pkg.value == item.key && !it.protected
+            }
+        },
+        modifier = Modifier.padding(top = 16.dp),
+        showPackageNames = true,
+        visibleCount = visible,
+        onShowMore = { expanded = true },
         onCollapse = onCollapse,
     )
+    selectedForReview?.let { row ->
+        val impact = ServiceImpactCatalog.explain(row.pkg.value)
+        AlertDialog(
+            onDismissRequest = { selectedForReview = null },
+            title = { Text(row.friendlyName) },
+            text = {
+                Column(Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text("Pacote: " + row.pkg.value)
+                    Text("O que faz: " + impact.purpose)
+                    Text("Se desativar: " + impact.disabling)
+                    Text("Riscos e dependências: " + impact.caution)
+                    if (row.description.isNotBlank()) {
+                        Text("Descrição técnica fornecida pelo perfil (pode variar conforme a versão): " + row.description)
+                    }
+                    Text("Como desfazer: " + ServiceImpactCatalog.recovery)
+                    Text("Estado planejado: " + if (row.off) "Desativado" else "Mantido ativo")
+                    Text("Esta escolha só altera o planejamento. A TV não será modificada até a confirmação final.")
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    selectedForReview = null
+                    onToggle(row)
+                }) { Text(if (row.off) "Manter ativo" else "Planejar desativação") }
+            },
+            dismissButton = {
+                TextButton(onClick = { selectedForReview = null }) { Text("Não alterar") }
+            },
+        )
+    }
 }
 
 // "Why?" on the protected group: one reason per row.
