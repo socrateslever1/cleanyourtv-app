@@ -102,8 +102,8 @@ object RemoteAndroidPolicy {
         val p = app.packageName.value.lowercase()
         if (!app.userInstalled || app.systemApp)
             return no("Somente aplicativos de usuário são elegíveis")
-        if (p in protectedExact || protectedPrefixes.any(p::startsWith) ||
-            criticalNameFragments.any(p::contains) || app.packageName in target.protectedPackages ||
+        if (p in protectedExact || protectedPrefixes.any { p.startsWith(it) } ||
+            criticalNameFragments.any { p.contains(it) } || app.packageName in target.protectedPackages ||
             Denylist.staticReason(app.packageName.value) != null)
             return no("Pacote crítico, de papel ativo ou não certificado")
         if (backup == null || !backup.persisted || !backup.hashVerified)
