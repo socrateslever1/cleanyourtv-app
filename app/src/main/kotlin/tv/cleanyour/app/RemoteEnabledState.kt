@@ -13,7 +13,13 @@ internal enum class RemoteEnabledState(val code: Int, val shellVerb: String) {
     DISABLED_USER(3, "disable-user"),
     DISABLED_UNTIL_USED(4, "disable-until-used");
 
-    val effectivelyEnabled: Boolean get() = this == DEFAULT || this == ENABLED
+    // DEFAULT inherits android:enabled from the manifest. It cannot safely be
+    // converted to true/false without reading the effective state separately.
+    val explicitEnabled: Boolean? get() = when (this) {
+        DEFAULT -> null
+        ENABLED -> true
+        else -> false
+    }
 
     companion object {
         fun of(code: Int): RemoteEnabledState? = entries.firstOrNull { it.code == code }

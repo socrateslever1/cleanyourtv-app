@@ -240,7 +240,7 @@ internal class RemoteAndroidController(private val context: Context, private val
         }
         val states = withContext(Dispatchers.IO) {
             info.apps.map { RemoteStateBackup.State(
-                it.packageName.value, exactState(s, it.packageName)) }
+                it.packageName.value, exactState(s, it.packageName), it.enabled) }
         }
         val saved = withContext(Dispatchers.IO) {
             RemoteStateBackup.save(context, info.target.deviceId, info.target.firmwareId,
@@ -299,10 +299,7 @@ internal class RemoteAndroidController(private val context: Context, private val
         val pending = journalFile(info.target.deviceId)
         require(!pending.exists()) { "Há operação anterior sem confirmação. Não serão feitas novas alterações." }
         val actualState = withContext(Dispatchers.IO) { exactState(s, app.packageName) }
-        require(actualState.effectivelyEnabled == app.enabled) {
-            "Divergência entre estado ativo e estado do gerenciador Android."
-        }
-        val originalState = backup.states.first { it.packageName == pkg }.enabledSetting
+         val originalState = backup.states.first { it.packageName == pkg }.enabledSetting
         val desiredState = if (restoring) originalState else if (enable)
             RemoteEnabledState.ENABLED else RemoteEnabledState.DISABLED_USER
         if (actualState == desiredState) return@withLock "O aplicativo já está no estado exato solicitado."
@@ -341,7 +338,7 @@ internal class RemoteAndroidController(private val context: Context, private val
         val finalState = withContext(Dispatchers.IO) { exactState(s, app.packageName) }
         if (verified.target.deviceId != info.target.deviceId ||
             verified.target.firmwareId != info.target.firmwareId ||
-            actual?.enabled != desiredState.effectivelyEnabled || finalState != desiredState)
+            actual == null || finalState != desiredState)
             error("Estado exato não confirmado. A operação permanece pendente de reconciliação.")
         withContext(Dispatchers.IO) {
             require(pending.delete()) { "Estado aplicado, mas a limpeza do diário falhou" }

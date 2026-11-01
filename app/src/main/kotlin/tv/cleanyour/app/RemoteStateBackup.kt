@@ -28,9 +28,11 @@ internal object RemoteStateBackup {
     private val id = Regex("^[a-f0-9]{16}$")
     private val digest = Regex("^[a-f0-9]{64}$")
 
-    data class State(val packageName: String, val enabledSetting: RemoteEnabledState) {
-        val enabled: Boolean get() = enabledSetting.effectivelyEnabled
-    }
+    data class State(
+        val packageName: String,
+        val enabledSetting: RemoteEnabledState,
+        val enabled: Boolean,
+    )
     data class Record(val deviceId: String, val firmwareId: String, val userId: Int,
         val capturedAtMs: Long, val states: List<State>, val sha256: String) {
         fun receipt() = RemoteRestoreReceipt(deviceId, firmwareId, userId, capturedAtMs,
@@ -43,7 +45,8 @@ internal object RemoteStateBackup {
     private fun snapshot(record: Record): ByteArray {
         val states = JSONArray()
         record.states.sortedBy { it.packageName }.forEach { s ->
-            states.put(JSONObject().put("package", s.packageName).put("enabledSetting", s.enabledSetting.name))
+            states.put(JSONObject().put("package", s.packageName)
+                .put("enabledSetting", s.enabledSetting.name).put("effectiveEnabled", s.enabled))
         }
         return JSONObject().put("schema", SCHEMA).put("device", record.deviceId)
             .put("firmware", record.firmwareId).put("user", record.userId)
@@ -76,7 +79,7 @@ internal object RemoteStateBackup {
             require(PackageName(pkg).value == pkg && seen.add(pkg)) { "Pacotes inválidos ou duplicados" }
             val state = RemoteEnabledState.ofName(entry.getString("enabledSetting"))
                 ?: error("Estado de pacote não reconhecido no backup")
-            states.add(State(pkg, state))
+            states.add(State(pkg, state, entry.getBoolean("effectiveEnabled")))
         }
         return Record(device, firmware, user, captured, states, declaredHash)
     }

@@ -28,7 +28,7 @@ class RemoteEnabledStateTest {
             val state = RemotePackageStateParser.read(dump(code), "com.example.reader", 0)
             assertEquals(code.toString(), RemoteEnabledState.of(code), state)
             assertEquals(verb, state?.shellVerb)
-            assertEquals(code <= 1, state?.effectivelyEnabled)
+            assertEquals(if (code == 0) null else code == 1, state?.explicitEnabled)
         }
     }
 
