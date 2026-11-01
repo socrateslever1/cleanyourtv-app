@@ -119,11 +119,14 @@ fun OffKeptPill(off: Boolean, modifier: Modifier = Modifier) {
 // showPackageName (Custom level), and the pill. onToggle null = protected (no pill); a fixed item
 // shows its pill and cannot be flipped.
 @Composable
-fun DiffRow(item: DiffItem, onToggle: ((DiffItem) -> Unit)?, modifier: Modifier = Modifier, showPackageName: Boolean = false) {
+fun DiffRow(item: DiffItem, onToggle: ((DiffItem) -> Unit)?, modifier: Modifier = Modifier, showPackageName: Boolean = false,
+    previewBeforeToggle: Boolean = false,
+) {
     val c = CytTheme.colors
     val offWord = stringResource(R.string.cyt_pill_off)
     val keptWord = stringResource(R.string.cyt_pill_kept)
-    val actionLabel = stringResource(if (item.off) R.string.cyt_action_keep else R.string.cyt_action_switch_off)
+    val actionLabel = if (previewBeforeToggle) "Ver função e impacto antes de decidir"
+        else stringResource(if (item.off) R.string.cyt_action_keep else R.string.cyt_action_switch_off)
     Row(
         modifier.fillMaxWidth().heightIn(min = 56.dp)
             .then(
@@ -140,6 +143,10 @@ fun DiffRow(item: DiffItem, onToggle: ((DiffItem) -> Unit)?, modifier: Modifier 
         Column(Modifier.weight(1f)) {
             Text(item.name, color = c.textPrimary, style = CytTheme.type.titleMedium.copy(fontSize = 16.sp))
             Text(item.description, color = c.textTertiary, style = CytTheme.type.bodySmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (previewBeforeToggle && onToggle != null && !item.fixed) {
+                Text("Toque para conferir o impacto antes de escolher", color = c.accent,
+                    style = CytTheme.type.bodySmall)
+            }
             if (showPackageName && item.packageName != null) {
                 // One line; a long package keeps its start and end ("com.mitv…home.atv").
                 LtrText(item.packageName, maxLines = 1, overflow = TextOverflow.MiddleEllipsis)
@@ -172,6 +179,7 @@ fun DiffGroupSection(
     visibleCount: Int = group.items.size,
     onShowMore: (() -> Unit)? = null,
     onCollapse: (() -> Unit)? = null,
+    previewBeforeToggle: Boolean = false,
 ) {
     Column(modifier.fillMaxWidth()) {
         if (onCollapse == null) {
@@ -191,7 +199,8 @@ fun DiffGroupSection(
             shown.forEachIndexed { i, item ->
                 if (i > 0) ListDivider()
                 androidx.compose.runtime.key(item.key) {
-                    DiffRow(item, onToggle, Modifier.listAppear(i), showPackageName = showPackageNames)
+                    DiffRow(item, onToggle, Modifier.listAppear(i), showPackageName = showPackageNames,
+                        previewBeforeToggle = previewBeforeToggle)
                 }
             }
             val hidden = group.items.size - shown.size

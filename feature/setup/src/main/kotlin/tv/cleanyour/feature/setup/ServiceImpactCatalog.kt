@@ -55,6 +55,19 @@ internal object ServiceImpactCatalog {
         )
     }
 
+    fun groupNote(groupId: String): String = when (groupId.substringBefore("-optional")) {
+        "ads" -> "Conteúdo comercial. Nem todo serviço desta categoria é apenas publicidade; avalie cada item."
+        "tracking" -> "Medição e telemetria. Desativar pode reduzir coleta, mas também afetar análises usadas pelo fabricante."
+        "preloads" -> "Aplicativos pré-instalados. A classificação depende do aparelho; alguns podem prestar funções úteis."
+        "demo" -> "Recursos de exposição em lojas. Verifique se o aparelho utiliza algum desses serviços."
+        "streaming" -> "Integrações de reprodução. Não desative aplicativos ou serviços que você utiliza."
+        "voice" -> "Assistente e serviços de voz. Desativar pode afetar pesquisas, comandos e acessibilidade."
+        "casting" -> "Transmissão e integração com outros aparelhos. Pode afetar Chromecast e espelhamento."
+        "brand" -> "Serviços adicionais do fabricante. A função e o impacto dependem do firmware."
+        "other" -> "Serviços em segundo plano. Não há garantia de que sejam dispensáveis em todos os aparelhos."
+        else -> "Revise individualmente: a função do serviço depende do modelo, firmware e outros aplicativos."
+    }
+
     const val recovery =
         "Se a mudança for aplicada e causar problema, abra a restauração da TV e reative o serviço ou desfaça a limpeza. A disponibilidade depende da conexão e do ponto de restauração."
 }

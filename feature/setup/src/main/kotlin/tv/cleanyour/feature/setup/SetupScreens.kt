@@ -525,6 +525,7 @@ private fun GroupSection(g: GroupSummary, custom: Boolean, onCollapse: () -> Uni
     var expanded by rememberSaveable(g.id) { mutableStateOf(false) }
     var selectedForReview by remember { mutableStateOf<RowSummary?>(null) }
     val visible = if (expanded || g.rows.size <= 6) g.rows.size else 4
+    Body(ServiceImpactCatalog.groupNote(g.id), Modifier.padding(start = 4.dp, top = 8.dp, bottom = 4.dp))
     DiffGroupSection(
         DiffGroup(g.id, g.title, g.rows.map { it.toItem() }),
         // A row tap opens its impact BEFORE it can change even a draft choice.
@@ -538,6 +539,7 @@ private fun GroupSection(g: GroupSummary, custom: Boolean, onCollapse: () -> Uni
         visibleCount = visible,
         onShowMore = { expanded = true },
         onCollapse = onCollapse,
+        previewBeforeToggle = true,
     )
     selectedForReview?.let { row ->
         val impact = ServiceImpactCatalog.explain(row.pkg.value)
