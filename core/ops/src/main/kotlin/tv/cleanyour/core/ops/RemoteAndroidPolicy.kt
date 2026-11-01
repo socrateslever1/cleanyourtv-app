@@ -128,6 +128,6 @@ object RemoteAndroidPolicy {
 
 /** Refuses destroying the only verified baseline while an earlier app differs. */
 object RemoteBaselineGuard {
-    fun changedPackages(original: Map<String, Boolean>, live: Map<String, Boolean>): List<String> =
-        original.filter { (pkg, enabled) -> live[pkg] != enabled }.keys.sorted()
+    fun <T : Any> changedPackages(original: Map<String, T>, live: Map<String, T?>): List<String> =
+        original.filter { (pkg, state) -> live[pkg] != state }.keys.sorted()
 }

@@ -311,7 +311,11 @@ internal class RemoteAndroidController(private val context: Context, private val
             backup.receipt(), app.enabled, System.currentTimeMillis(), restoring = restoring)
         when (verdict) {
             is RemoteVerdict.Rejected -> error(verdict.reason)
-            RemoteVerdict.AlreadyInRequestedState -> return@withLock "O aplicativo já está no estado solicitado."
+            RemoteVerdict.AlreadyInRequestedState -> {
+                // A DEFAULT -> ENABLED transition changes the exact state even
+                // though both are effectively enabled. Allow restoration only.
+                if (!restoring) return@withLock "O aplicativo já está no estado solicitado."
+            }
             RemoteVerdict.Allowed -> Unit
         }
         // Durable pending journal comes BEFORE the shell write. A failed verification

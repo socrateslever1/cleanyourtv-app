@@ -44,7 +44,7 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
     val manager = remember(graph) { RemoteAndroidController(context.applicationContext, graph) }
     var ip by remember { mutableStateOf("") }
     var inventory by remember { mutableStateOf<RemoteAndroidController.Inventory?>(null) }
-    var selected by remember { mutableStateOf<Pair<String, Boolean>?>(null) }
+    var selected by remember { mutableStateOf<Triple<String, Boolean, Boolean>?>(null) }
     var message by remember { mutableStateOf("Conecte outro Android previamente autorizado por ADB TCP. Não é pareamento por código.") }
     var busy by remember { mutableStateOf(false) }
     var backup by remember { mutableStateOf<RemoteStateBackup.Record?>(null) }
@@ -122,14 +122,14 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
     }
 
     if (selected != null) {
-        val (pkg, enable) = selected!!
+        val (pkg, enable, restoreExact) = selected!!
         AlertDialog(onDismissRequest = { if (!busy) selected = null },
-            title = { Text(if (enable) "Ativar no outro Android?" else "Desativar no outro Android?") },
+            title = { Text(if (restoreExact) "Restaurar estado original do Android?" else
+                if (enable) "Ativar no outro Android?" else "Desativar no outro Android?") },
             text = { Text("Pacote: $pkg\nO sistema exige backup, identidade, firmware e confirmação antes de alterar. O Android poderá recusar a operação.") },
             confirmButton = {
                 TextButton(enabled = !busy, onClick = { run {
-                    val prior = backup?.states?.firstOrNull { it.packageName == pkg }
-                    message = if (prior != null && prior.enabled == enable) manager.restore(pkg)
+                    message = if (restoreExact) manager.restore(pkg)
                         else manager.change(pkg, enable)
                     inventory = manager.refresh()
                     selected = null
@@ -193,20 +193,24 @@ internal fun RemoteAndroidDialog(graph: AppGraph, onClose: () -> Unit) {
                         val pkg = app.packageName.value
                         val desired = !app.enabled
                         val found = backup
-                        val eligible = info.canWrite && externalBackupVerified && found != null &&
+                        val canChange = info.canWrite && externalBackupVerified && found != null &&
                             RemoteAndroidPolicy.evaluate(info.target, app,
                                 if (desired) RemoteOperation.ENABLE else RemoteOperation.DISABLE,
+                                found.receipt(), app.enabled, System.currentTimeMillis()) == RemoteVerdict.Allowed
+                        val baseline = found?.states?.firstOrNull { it.packageName == pkg }
+                        val canRestore = info.canWrite && externalBackupVerified && found != null &&
+                            baseline != null && RemoteAndroidPolicy.evaluate(info.target, app,
+                                if (baseline.enabled) RemoteOperation.ENABLE else RemoteOperation.DISABLE,
                                 found.receipt(), app.enabled, System.currentTimeMillis(),
-                                restoring = found.states.any { it.packageName == pkg && it.enabled != app.enabled }) ==
-                                    RemoteVerdict.Allowed
+                                restoring = true) !is RemoteVerdict.Rejected
                         Text(pkg + if (app.enabled) " — ativo" else " — desativado")
-                        TextButton(enabled = !busy && eligible, onClick = { selected = pkg to desired }) {
+                        TextButton(enabled = !busy && canChange, onClick = { selected = Triple(pkg, desired, false) }) {
                             Text(if (app.enabled) "Desativar" else "Ativar")
                         }
-                        if (found?.states?.any { it.packageName == pkg && it.enabled != app.enabled } == true) {
-                            TextButton(enabled = !busy && eligible, onClick = {
-                                selected = pkg to found.states.first { it.packageName == pkg }.enabled
-                            }) { Text("Restaurar estado do backup") }
+                        if (baseline != null) {
+                            TextButton(enabled = !busy && canRestore, onClick = {
+                                selected = Triple(pkg, baseline.enabled, true)
+                            }) { Text("Restaurar estado exato do backup") }
                         }
                         TextButton(enabled = !busy, onClick = {
                             chosenApk = pkg
