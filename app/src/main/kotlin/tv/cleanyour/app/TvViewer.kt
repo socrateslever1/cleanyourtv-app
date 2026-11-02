@@ -41,12 +41,16 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import tv.cleanyour.core.flows.AccessResult
 import tv.cleanyour.core.flows.RemoteKey
 import tv.cleanyour.core.flows.mapRemoteTouch
 import tv.cleanyour.core.model.RawShell
+import tv.cleanyour.core.model.RemoteDir
+import tv.cleanyour.core.model.RemotePath
 import tv.cleanyour.core.model.ShellLine
 import tv.cleanyour.core.model.TvId
 import tv.cleanyour.core.session.ExecSpec
@@ -86,12 +90,14 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
     var session by remember(tvId) { mutableStateOf<TvSession?>(null) }
     var displaySize by remember { mutableStateOf(IntSize.Zero) }
     var input by remember { mutableStateOf("") }
-    var active by remember(tvId) { mutableStateOf(true) }
+    var retry by remember(tvId) { mutableStateOf(0) }
+    val remoteFile = remember(tvId, retry) {
+        RemotePath(RemoteDir.TMP, listOf("viewer-" + java.util.UUID.randomUUID().toString() + ".png"))
+    }
     val runSpec = remember { ExecSpec(timeoutMs = 7000, idleTimeoutMs = 5000, stdoutCap = 4096,
         stderrCap = 1024, retry = RetryClass.NEVER) }
 
-    LaunchedEffect(tvId, active) {
-        if (!active) return@LaunchedEffect
+    LaunchedEffect(tvId, retry) {
         val access = graph.access.session(tvId)
         val connected = (access as? AccessResult.Ok)?.session
         if (connected == null) {
@@ -110,7 +116,19 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
             while (isActive) {
                 val next = try {
                     withContext(Dispatchers.IO) {
-                        graph.prober.screenshot(connected)?.let(::decodeTvFrame)
+                        val spec = ExecSpec(timeoutMs = 15000, idleTimeoutMs = 8000, stdoutCap = 1024)
+                        val remoteName = remoteFile.absolute
+                        try {
+                            val result = connected.exec(ShellLine("mkdir -p ${RemoteDir.TMP.path} && screencap -p '$remoteName'"), spec)
+                            if (result.exit == 0) connected.pull(remoteFile, 16L * 1024 * 1024)?.let(::decodeTvFrame) else null
+                        } finally {
+                            withContext(NonCancellable) {
+                                withTimeoutOrNull(3000) {
+                                    runCatching { connected.exec(ShellLine("rm -f '$remoteName'"),
+                                        ExecSpec(timeoutMs = 2500, idleTimeoutMs = 2000, stdoutCap = 1024)) }
+                                }
+                            }
+                        }
                     }
                 } catch (e: CancellationException) { throw e }
                   catch (_: Exception) { null }
@@ -144,7 +162,7 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
     }
     fun press(key: RemoteKey) { submit("input keyevent ${key.androidKeyCode}") }
 
-    Dialog(onDismissRequest = { active = false; onClose() },
+    Dialog(onDismissRequest = onClose,
         properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxWidth(.98f).fillMaxHeight(.94f)) {
             Column(Modifier.padding(12.dp).verticalScroll(rememberScrollState()),
@@ -153,7 +171,7 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
                     Text("Visualizar e controlar a TV")
-                    OutlinedButton(onClick = { active = false; onClose() }) { Text("Fechar") }
+                    OutlinedButton(onClick = onClose) { Text("Fechar") }
                 }
                 Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)
                     .background(androidx.compose.ui.graphics.Color.Black)
@@ -195,8 +213,8 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
                     submit("input text '$sanitized'")
                     input = ""
                 }, enabled = session != null && validatedRemoteText(input) != null) { Text("Enviar texto") }
-                if (frame == null && session == null) {
-                    OutlinedButton(onClick = { active = false; frame = null; active = true }) { Text("Tentar novamente") }
+                if (session == null) {
+                    OutlinedButton(onClick = { frame = null; retry++ }) { Text("Tentar novamente") }
                 }
             }
         }
