@@ -77,7 +77,7 @@ private fun tvType(size: Float, weight: FontWeight = FontWeight.Normal, tracking
 @Composable
 private fun CleanHome(u: Dp, modifier: Modifier) {
     Box(modifier.fillMaxSize().ambientGlow(Color(0xFFE8343D), coreAlpha = 0.30f, midAlpha = 0.09f)) {
-        Text("GOOD AFTERNOON", Modifier.offset(u * 18, u * 14), color = Color.White.copy(alpha = 0.55f), style = tvType(5 * u.value, tracking = 1.2f * u.value))
+        Text("BOA TARDE", Modifier.offset(u * 18, u * 14), color = Color.White.copy(alpha = 0.55f), style = tvType(5 * u.value, tracking = 1.2f * u.value))
         Text("2:17", Modifier.offset(u * 16, u * 20), color = Color(0xFFF5F5F7), style = tvType(22 * u.value, FontWeight.ExtraLight))
         Row(Modifier.align(Alignment.TopEnd).padding(top = u * 22, end = u * 14), horizontalArrangement = Arrangement.spacedBy(u * 5)) {
             repeat(3) { MiniPill(u) }
