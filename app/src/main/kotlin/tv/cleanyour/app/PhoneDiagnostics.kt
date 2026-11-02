@@ -57,7 +57,7 @@ internal fun PhoneDiagnosticsDialog(context: Context, onClose: () -> Unit) {
                     Text("RAM disponível: " + PhoneDiagnostics.gib(m.availableRam) + " de " +
                         PhoneDiagnostics.gib(m.totalRam) + ".")
                     Text(m.guidance())
-                }.onFailure { Text("Falha na leitura: " + it.javaClass.simpleName) }
+                }.onFailure { Text("Não foi possível consultar o armazenamento e a memória deste celular.") }
                 Text("Diagnóstico local. Não desativa serviços, aplicativos ou notificações.")
             }
         },
