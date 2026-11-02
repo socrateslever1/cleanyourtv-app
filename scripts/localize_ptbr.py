@@ -26,6 +26,9 @@ MODULES = ("app", "feature/connect", "feature/setup", "feature/manage",
 # Nunca traduzir identificadores de pacotes, comandos ADB ou nomes de serviços.
 FIXED = {
  "Back":"Voltar", "Cancel":"Cancelar", "OK":"OK", "Done":"Concluído",
+ "On":"Ativado", "App":"Aplicativo", "Apps":"Aplicativos",
+ "Settings":"Configurações", "More":"Mais", "Retry":"Tentar novamente",
+ "Checking":"Verificando", "Loading":"Carregando", "Skip":"Ignorar",
  "Undo":"Desfazer", "Close":"Fechar", "Help":"Ajuda",
  "Start":"Começar", "Next":"Avançar", "Continue":"Continuar",
  "Connected":"Conectado", "Connecting...":"Conectando…",
@@ -360,6 +363,15 @@ def run(root, report_path, strict=False):
                     value = BY_KEY.get(key) or translate(raw)
                     if not value:
                         raise ValueError("translation unavailable")
+                    # Rejeitar traduções que silenciosamente conservaram ações inglesas.
+                    # Termos de marcas como Android TV, Wear OS e Wi-Fi podem permanecer.
+                    if value.strip() == raw.strip() and re.search(
+                        r"\b(?:the|your|you|this|that|with|from|without|please|have|are|"
+                        r"settings|checking|install|update|download|connected|waiting|"
+                        r"failed|ready|cancel|done|back|next|continue|try|start|skip)\b",
+                        raw, re.IGNORECASE
+                    ):
+                        raise ValueError("texto de interface ainda em inglês")
                     if key == "customise_dock_row_rows":
                         # Os nomes 'row'/'rows' dentro das variantes ICU são TEXTO,
                         # não variáveis. O verificador genérico os confunde.
