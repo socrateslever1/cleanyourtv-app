@@ -133,6 +133,31 @@ private fun InlineCard(extras: SetupExtras, actions: SetupActions) {
 @Composable
 fun WelcomeScreen(state: SetupState.Welcome, extras: SetupExtras, actions: SetupActions, onReturning: () -> Unit, modifier: Modifier = Modifier) {
     val found = state.found
+    var confirmTv by rememberSaveable { mutableStateOf(false) }
+    if (confirmTv && found.size == 1) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { confirmTv = false },
+            title = { androidx.compose.material3.Text("Escolher dispositivo") },
+            text = {
+                androidx.compose.material3.Text(
+                    "Deseja configurar a TV ${displayName(found.single())}? " +
+                    "A conexão precisa ser autorizada no dispositivo. Nenhuma alteração será feita sem confirmação."
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    confirmTv = false
+                    actions.intent(SetupIntent.Start)
+                }) { androidx.compose.material3.Text("Usar esta TV") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    confirmTv = false
+                    actions.intent(SetupIntent.Open(Sheet.ADDRESS))
+                }) { androidx.compose.material3.Text("Escolher outra TV") }
+            }
+        )
+    }
     val line = when {
         found.size >= 2 -> msg(R.string.welcome_found_many, "count" to found.size)
         found.size == 1 -> msg(R.string.welcome_found_one_noroom, "name" to displayName(found[0]))
@@ -155,7 +180,7 @@ fun WelcomeScreen(state: SetupState.Welcome, extras: SetupExtras, actions: Setup
                 // the TV is found before the first tap"); pinned like S3's safety line (R4-W8 H1).
                 DiscoveryChip(line, found = found.isNotEmpty(), modifier = Modifier.padding(bottom = 14.dp))
                 ActionColumn {
-                    PrimaryButton(stringResource(R.string.welcome_start), { actions.intent(SetupIntent.Start) })
+                    PrimaryButton(stringResource(R.string.welcome_start), { if (found.size == 1) confirmTv = true else actions.intent(SetupIntent.Start) })
                     TertiaryButton(stringResource(R.string.welcome_returning), onReturning)
                 }
             },
