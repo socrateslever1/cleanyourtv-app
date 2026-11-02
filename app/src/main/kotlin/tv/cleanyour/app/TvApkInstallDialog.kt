@@ -43,7 +43,7 @@ internal fun TvApkInstallDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit
         loading = true
         val r = runCatching { TvApkSideload.prepare(context, uri) }
         loading = false
-        r.onSuccess { prepared = it }.onFailure { message = it.message ?: "APK inválido." }
+        r.onSuccess { prepared = it }.onFailure { message = "Não foi possível analisar o APK selecionado. Verifique se o arquivo é válido e tente novamente." }
     }
     if (loading || sending) {
         AlertDialog(
