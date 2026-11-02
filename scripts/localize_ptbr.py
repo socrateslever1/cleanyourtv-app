@@ -314,6 +314,17 @@ def translate(s):
 def run(root, report_path, strict=False):
     total = done = failed = 0
     modules = {}
+    # Textos portugueses versionados são a fonte preferida. O serviço de
+    # tradução é somente complementar e nunca substitui traduções revisadas.
+    native = {}
+    for module in MODULES:
+        source = root / module / "src/main/res/values-pt-rBR/strings.xml"
+        if source.is_file():
+            native[module] = {
+                entry.attrib["name"]: unescape_android("".join(entry.itertext()))
+                for entry in ET.parse(source).getroot()
+                if entry.tag == "string" and "name" in entry.attrib
+            }
     # O volume de recursos exige tradução concorrente, mas limitada, para não
     # retardar desnecessariamente a compilação do APK.
     candidates=set()
@@ -328,7 +339,7 @@ def run(root, report_path, strict=False):
             if entry.tag == "string":
                 key=entry.attrib.get("name")
                 raw=unescape_android("".join(entry.itertext()))
-                if key not in BY_KEY and raw not in FIXED and raw and not raw.startswith(("@","?")):
+                if key not in native.get(module, {}) and key not in BY_KEY and raw not in FIXED and raw and not raw.startswith(("@","?")):
                     candidates.add(raw)
             elif entry.tag in ("plurals","string-array"):
                 for item in entry:
@@ -366,7 +377,7 @@ def run(root, report_path, strict=False):
             try:
                 if entry.tag == "string":
                     raw = unescape_android("".join(entry.itertext()))
-                    value = BY_KEY.get(key) or translate(raw)
+                    value = native.get(module, {}).get(key) or BY_KEY.get(key) or translate(raw)
                     if not value:
                         raise ValueError("translation unavailable")
                     # Rejeitar traduções que silenciosamente conservaram ações inglesas.
