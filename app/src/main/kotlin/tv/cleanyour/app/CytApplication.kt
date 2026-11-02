@@ -1,6 +1,7 @@
 package tv.cleanyour.app
 
 import android.app.Application
+import android.content.Context
 import java.io.File
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.combine
@@ -14,6 +15,10 @@ import tv.cleanyour.core.flows.planOrNull
 class CytApplication : Application() {
     lateinit var graph: AppGraph
         private set
+
+    override fun attachBaseContext(base: Context) {
+        super.attachBaseContext(PtBrContext.wrap(base))
+    }
 
     override fun onCreate() {
         super.onCreate()
