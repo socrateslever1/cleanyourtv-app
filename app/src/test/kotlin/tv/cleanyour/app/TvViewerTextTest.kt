@@ -14,7 +14,7 @@ class TvViewerTextTest {
         assertNull(validatedRemoteText(""))
         assertNull(validatedRemoteText("a; rm -rf /"))
         assertNull(validatedRemoteText("a' && reboot"))
-        assertNull(validatedRemoteText("a$HOME"))
+        assertNull(validatedRemoteText("a\$HOME"))
         assertNull(validatedRemoteText("a".repeat(81)))
     }
 }
