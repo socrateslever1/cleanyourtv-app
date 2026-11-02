@@ -173,6 +173,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
     var showWearInspector by remember { mutableStateOf(false) }
     var showPhoneInspector by remember { mutableStateOf(false) }
     var tvToolsTarget by remember { mutableStateOf<TvId?>(null) }
+    var tvViewerTarget by remember { mutableStateOf<TvId?>(null) }
     if (graph.store.flavour == "full") UpdateNotifier()
 
     // 0.4.6 (REPORTING-PROPOSAL 2.2): a card's "Report a problem" (IssueRoute) opens the GitHub form
@@ -368,7 +369,9 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
         if (showPhoneInspector) PhoneDiagnosticsDialog(context) { showPhoneInspector = false }
         tvToolsTarget?.let { id -> TvToolsDialog(graph, id,
             onInstallApk = { tvToolsTarget = null; apkInstallTarget = id },
+            onViewTv = { tvToolsTarget = null; tvViewerTarget = id },
             onClose = { tvToolsTarget = null }) }
+        tvViewerTarget?.let { id -> TvViewerDialog(graph, id) { tvViewerTarget = null } }
         SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(16.dp))
     }
 }

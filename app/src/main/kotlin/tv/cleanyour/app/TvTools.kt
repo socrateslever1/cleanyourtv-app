@@ -122,7 +122,7 @@ internal object TvTools {
 }
 
 @Composable
-internal fun TvToolsDialog(graph: AppGraph, tvId: TvId, onInstallApk: () -> Unit, onClose: () -> Unit) {
+internal fun TvToolsDialog(graph: AppGraph, tvId: TvId, onInstallApk: () -> Unit, onViewTv: () -> Unit, onClose: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember(tvId) { context.getSharedPreferences("metrics_" + tvId.value, Context.MODE_PRIVATE) }
     val scope = rememberCoroutineScope()
@@ -183,6 +183,7 @@ internal fun TvToolsDialog(graph: AppGraph, tvId: TvId, onInstallApk: () -> Unit
                     }) { Text("Salvar como referência anterior") }
                 }
                 HorizontalDivider()
+                TextButton(enabled = !busy, onClick = onViewTv) { Text("Visualizar e controlar a TV") }
                 TextButton(enabled = !busy, onClick = onInstallApk) { Text("Instalar APK na TV") }
                 Text("Histórico de tarefas não equivale a histórico de vídeos. Não há retomada universal de reprodução.")
             }
