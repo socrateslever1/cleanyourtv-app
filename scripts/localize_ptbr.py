@@ -302,7 +302,7 @@ def translate(s):
     except (ValueError, TypeError):
         return None
 
-def run(root, report_path):
+def run(root, report_path, strict=False):
     total = done = failed = 0
     modules = {}
     # O volume de recursos exige tradução concorrente, mas limitada, para não
@@ -405,11 +405,17 @@ def run(root, report_path):
     print("Cobertura " + str(done) + "/" + str(total) + " (" + str(report["cobertura_percentual"]) + "%)")
     if done == 0:
         raise SystemExit("Nenhuma tradução gerada.")
+    if strict and failed:
+        raise SystemExit("Publicação bloqueada: " + str(failed) +
+                         " texto(s) sem tradução para português do Brasil. Consulte " +
+                         str(report_path))
     return report
 
 if __name__ == "__main__":
     parser=argparse.ArgumentParser()
     parser.add_argument("--root",default=".")
     parser.add_argument("--report",default="ptbr-cobertura.json")
+    parser.add_argument("--strict", action="store_true",
+                        help="Não permitir APK de produção com traduções incompletas")
     args=parser.parse_args()
-    run(Path(args.root),Path(args.report))
+    run(Path(args.root),Path(args.report),strict=args.strict)
