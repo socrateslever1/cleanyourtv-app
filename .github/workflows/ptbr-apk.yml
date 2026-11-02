@@ -73,8 +73,9 @@ jobs:
           ./gradlew check verifyRoborazziDebug --no-daemon --console=plain
       - name: Gerar recursos pt-BR
         run: |
-          python3 scripts/localize_ptbr.py --root . --report ptbr-cobertura.json
+          python3 scripts/localize_ptbr.py --root . --report ptbr-cobertura.json --strict
           python3 -m json.tool ptbr-cobertura.json >/dev/null
+          python3 -c 'import json; r=json.load(open("ptbr-cobertura.json",encoding="utf-8")); assert r["nao_localizadas"] == 0 and r["localizadas"] == r["total"], "Interface sem localização completa em português"'
       - name: Compilar fullRelease (não depurável)
         env:
           CYT_RELEASE_KEYSTORE_PASSWORD: ${{ secrets.CLEAN_TV_KEYSTORE_PASSWORD }}
