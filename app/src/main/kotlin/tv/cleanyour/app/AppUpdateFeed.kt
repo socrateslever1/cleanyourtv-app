@@ -1,6 +1,7 @@
 package tv.cleanyour.app
 
 import android.content.Context
+import android.content.pm.ApplicationInfo
 import android.content.Intent
 import android.net.Uri
 import android.os.Build
@@ -33,6 +34,8 @@ import org.json.JSONObject
 internal object AppUpdateFeed {
     const val API = "https://api.github.com/repos/socrateslever1/cleanyourtv-app/releases/latest"
     private const val APK = "CleanYourTV.apk"
+    /** Não oferecer atualização assinada de produção a outras edições. */
+    private const val OFFICIAL_PACKAGE = "tv.cleanyour.app.personal"
     private val tagPattern = Regex("""^ptbr-r([0-9]+)-[a-f0-9]{8}$""")
     private val installedPattern = Regex("""-ptbr\.r([0-9]+)$""")
 
@@ -44,7 +47,18 @@ internal object AppUpdateFeed {
         return remote > current
     }
 
+    internal fun supportsOfficialUpdates(packageName: String, isDebuggable: Boolean): Boolean =
+        packageName == OFFICIAL_PACKAGE && !isDebuggable
+
+    internal fun supportsOfficialUpdates(context: Context): Boolean =
+        supportsOfficialUpdates(
+            context.packageName,
+            (context.applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        )
+
     suspend fun available(context: Context): Available? = withContext(Dispatchers.IO) {
+        // Exige identidade estável antes de consultar ou baixar um APK.
+        if (!supportsOfficialUpdates(context)) return@withContext null
         val connection = (URL(API).openConnection() as HttpsURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 7000
@@ -98,6 +112,7 @@ internal fun UpdateNotifier() {
     var result by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
+        if (!AppUpdateFeed.supportsOfficialUpdates(context)) return@LaunchedEffect
         val prefs = context.getSharedPreferences("owned_build_updates", Context.MODE_PRIVATE)
         val now = System.currentTimeMillis()
         val last = prefs.getLong("checked_at", 0L)
