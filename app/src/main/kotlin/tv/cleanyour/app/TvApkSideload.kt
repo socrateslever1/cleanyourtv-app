@@ -85,11 +85,11 @@ internal object TvApkSideload {
                         progress(((transferred * 100L) / apk.size).toInt().coerceIn(0, 100))
                     }) {
                         is InstallOutcome.Installed -> "Aplicativo ${apk.packageName} instalado na TV. Abra-o na lista de aplicativos."
-                        is InstallOutcome.Failed -> "A instalação foi recusada pela TV (${outcome.code}): ${outcome.detail.take(240)}"
+                        is InstallOutcome.Failed -> "A TV recusou a instalação. Confira se o aplicativo é compatível e se já existe outra versão com assinatura diferente."
                     }
                 } finally { hold.close() }
             } catch (e: Exception) {
-                "A instalação não foi concluída: ${e.message?.take(240) ?: e.javaClass.simpleName}"
+                "Não foi possível concluir a instalação na TV. Verifique a conexão, o armazenamento disponível e a compatibilidade do APK."
             } finally {
                 apk.discard()
             }
