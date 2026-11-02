@@ -52,7 +52,7 @@ internal object WearOsReadOnly {
     suspend fun examine(graph: AppGraph, ip: String): String = withContext(Dispatchers.IO) {
         if (!localIpv4(ip)) return@withContext "Informe um endereço IPv4 privado válido na sua rede."
         when (val found = graph.sessions.open(Endpoint.PlainTcp(ip.trim(), 5555), null) {}) {
-            is OpenResult.Failed -> "Não foi possível autenticar o ADB (${found.error}). " +
+            is OpenResult.Failed -> "Não foi possível autenticar a conexão com o relógio. " +
                 "Autorize o celular no relógio. Para relógios com pareamento sem fio por código, " +
                 "configure previamente o ADB TCP no computador; o pareamento TLS ainda não é suportado no app."
             is OpenResult.Ok -> {
@@ -82,7 +82,7 @@ internal object WearOsReadOnly {
                         "RAM disponível: " + (availableRamKb?.let { "$it KiB" } ?: "indisponível") + "\n\n" +
                         "Diagnóstico somente leitura. Nenhum aplicativo ou serviço foi alterado."
                 } catch (e: Exception) {
-                    "O relógio conectou, mas o diagnóstico falhou: ${e.javaClass.simpleName}. Nenhuma alteração efetuada."
+                    "A conexão foi estabelecida, mas não foi possível concluir o diagnóstico do relógio. Nenhuma alteração foi realizada."
                 }
             }
         }
