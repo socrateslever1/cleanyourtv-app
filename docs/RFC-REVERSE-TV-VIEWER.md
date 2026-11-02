@@ -23,14 +23,17 @@ telefone -> eventos remotos para a mesma TV, em rede local.
 7. Falhas de captura não afetam limpeza, backup ou restauração.
 
 ## Etapas de entrega
-1. **Iniciado:** contrato de sessão, mapeamento de toque e testes unitários.
-2. Cliente de vídeo H.264 com MediaCodec e transporte ADB autenticado, com controle explícito de backpressure.
-3. Injeção de eventos direcionais/teclado com lista de comandos permitidos; toque absoluto só quando suportado.
-4. Tela Compose com player, controles e estados de erro, integrada por rota própria.
-5. Testes em Chromecast Google TV 4K e TCL Google TV, reconexão e compatibilidade.
-6. APK de avaliação assinado, validação de atualização e homologação antes de produção.
+1. **Implementado, pendente execução de testes:** contrato de sessão, mapeamento de toque, testes unitários de validação.
+2. **Protótipo implementado:** capturas PNG sucessivas por ADB, arquivo temporário único e limpeza após cada captura; ainda não é vídeo H.264 fluido.
+3. **Implementado, pendente teste físico:** comandos direcionais, Home, Voltar, OK, volume, toque absoluto e texto ASCII restrito.
+4. **Implementado, pendente teste físico:** tela Compose de prévia integrada ao diálogo das ferramentas da TV.
+5. **Pendente:** execução do pipeline Gradle, testes em Chromecast Google TV 4K e TCL Google TV, reconexão e compatibilidade.
+6. **Pendente:** APK de avaliação assinado com chave de atualização, validação de instalação e homologação antes de produção.
 
 ## Limitações conhecidas
 O scrcpy upstream não constitui SDK Android embarcável pronto.
 Uma integração depende de servidor compatível na TV e do ciclo de vida da conexão ADB.
 Dispositivos sem captura suportada deverão oferecer apenas controle remoto e explicar a limitação.
+
+## Estado de compilação (2026-11-01)
+O código foi enviado ao GitHub, mas os commits desta branch ainda não dispararam um workflow Actions. Não existe APK comprovadamente compilado desta implementação. A workflow existente `.github/workflows/ptbr-apk.yml` tem `workflow_dispatch` para execução selecionando esta branch, requer segredos da chave permanente e valida testes, lint, assinatura, versão e pacote. Não fazer merge em `main` até compilação e testes físicos. As capturas sucessivas são uma solução inicial de visualização, **não** espelhamento de vídeo fluido. A implementação H.264 deverá ser feita em etapa independente, com testes de latência e dispositivos.
