@@ -277,7 +277,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
                     val m = rememberMachine("manage:${key.tvId}") { graph.manage(it, key.tvId?.let(::TvId)) }
                     val state by m.state.collectAsStateWithLifecycle()
                     LaunchedEffect(m) { m.effects.collect { onManageEffect(it) } }
-                    ManageScreen(state, m::dispatch, onInstallApk = { apkInstallTarget = it }, onTvTools = { tvToolsTarget = it })
+                    ManageScreen(state, m::dispatch, onInstallApk = { apkInstallTarget = it }, onTvTools = { tvToolsTarget = it }, onViewTv = { tvViewerTarget = it })
                 }
                 entry<Dest.SwitchedOff> { key ->
                     val m = rememberMachine("off:${key.tvId}") { graph.switchedOff(it, TvId(key.tvId)) }
