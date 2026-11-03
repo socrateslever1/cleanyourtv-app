@@ -10,13 +10,13 @@ import kotlinx.coroutines.withContext
 import tv.cleanyour.adb.session.AdbTvSession
 
 /**
- * Decodes the built-in Android screenrecord Annex-B stream onto a Surface.
- * The TV sends H.264 through ADB and the PHONE owns the MediaCodec decoder.
+ * Decodes H.264 Annex-B received from screenrecord/ADB or CleanYourTV Bridge.
+ * The TV sends encoded frames and the phone owns the MediaCodec decoder.
  * No file is written on either device. No camera, microphone or recording
  * permission is requested. Protected DRM surfaces remain inaccessible.
  *
- * Not a replacement for a future scrcpy/Bridge pipeline: screenrecord has a
- * 180-second session limit and some Android TV firmware disables its encoder.
+ * The native screenrecord fallback has a 180-second session limit; Bridge
+ * uses user-authorized MediaProjection and remains firmware-dependent.
  */
 internal object TvH264Player {
     private const val WIDTH = 1280
@@ -63,7 +63,11 @@ internal object TvH264Player {
                 for (iteration in 0 until 16) {
                     val index = codec.dequeueOutputBuffer(info, if (iteration == 0) waitUs else 0)
                     if (index >= 0) {
-                        val hasImage = info.size > 0
+                        // For Surface decoders, some vendors report size=0
+                        // even for a renderable frame. Avoid a false "black
+                        // screen" failure while preserving the EOS check.
+                        val hasImage = (info.flags and MediaCodec.BUFFER_FLAG_END_OF_STREAM) == 0 &&
+                            (info.size > 0 || info.presentationTimeUs > 0L)
                         codec.releaseOutputBuffer(index, hasImage)
                         if (hasImage) rendered++
                     } else if (index == MediaCodec.INFO_TRY_AGAIN_LATER) {
