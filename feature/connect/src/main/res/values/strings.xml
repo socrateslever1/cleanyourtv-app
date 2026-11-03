@@ -164,6 +164,7 @@
     <string name="pairing_steps_cmd_verify" translatable="false">adb devices -l</string>
     <string name="pairing_steps_note">The first command asks for the six-digit code shown on the TV. If more than one device is listed, the third command must retain the -s address. After switching to port 5555, reconnect and check for the status device. Return to CleanYourTV on your phone, connect to the TV address and authorize this phone on the TV if prompted. The PC pairing does not authorize the phone.</string>
     <string name="pairing_steps_safety">Security: port 5555 uses legacy ADB without the transport encryption of wireless debugging. Use it only on a trusted local network, never expose it to the internet, and turn debugging off after use. A TV restart or disabling debugging may reset the port; repeat the connection steps if needed.</string>
+    <string name="pairing_steps_ports">Why the port changes: Android selects a new TLS connection port when Wireless debugging restarts. The pairing port is different again. On the computer, adb mdns services displays the currently advertised connection port. Reserving the TV\'s IP in the router can stabilize its address, but NOT the TLS port. This app still uses temporary TCP port 5555; direct TLS pairing on the phone is not available yet.</string>
 
     <!-- Stop: TV not found (UX 4.1, no Wi-Fi name, D19) -->
     <string name="stop_tv_not_found_title">No TV found yet</string>
