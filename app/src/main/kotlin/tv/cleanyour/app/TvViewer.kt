@@ -2,8 +2,8 @@ package tv.cleanyour.app
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.view.SurfaceHolder
-import android.view.SurfaceView
+import android.graphics.SurfaceTexture
+import android.view.TextureView
 import android.view.Surface
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -109,13 +109,21 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onInstallBridge: () -> 
         graph.tvs.tvs.value.firstOrNull { it.id == tvId }?.endpoints
             ?.filterIsInstance<Endpoint.PlainTcp>()?.firstOrNull()?.host.orEmpty()
     }
+    // TextureView composites beneath Compose overlays correctly. An opaque
+    // SurfaceView could cover the PNG fallback with black before first video.
     val videoCallback = remember(tvId) {
-        object : SurfaceHolder.Callback {
-            override fun surfaceCreated(holder: SurfaceHolder) { videoSurface = holder.surface }
-            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
-                videoSurface = holder.surface
+        object : TextureView.SurfaceTextureListener {
+            override fun onSurfaceTextureAvailable(texture: SurfaceTexture, width: Int, height: Int) {
+                videoSurface?.release()
+                videoSurface = Surface(texture)
             }
-            override fun surfaceDestroyed(holder: SurfaceHolder) { videoSurface = null }
+            override fun onSurfaceTextureSizeChanged(texture: SurfaceTexture, width: Int, height: Int) = Unit
+            override fun onSurfaceTextureDestroyed(texture: SurfaceTexture): Boolean {
+                videoSurface?.release()
+                videoSurface = null
+                return true
+            }
+            override fun onSurfaceTextureUpdated(texture: SurfaceTexture) = Unit
         }
     }
     // One pending refresh at most: remote-control bursts must not queue dozens
@@ -300,11 +308,12 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onInstallBridge: () -> 
                     if ((videoRequested && !videoFailed) || bridgeSessionKey != null) {
                         AndroidView(
                             factory = { context ->
-                                SurfaceView(context).apply { holder.addCallback(videoCallback) }
+                                TextureView(context).apply { surfaceTextureListener = videoCallback }
                             },
                             modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
                             onRelease = { view ->
-                                view.holder.removeCallback(videoCallback)
+                                view.surfaceTextureListener = null
+                                videoSurface?.release()
                                 videoSurface = null
                             },
                         )
