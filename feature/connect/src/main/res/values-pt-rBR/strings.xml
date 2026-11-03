@@ -23,4 +23,12 @@
     <string name="address_field_label">Endereço IP da TV</string>
     <string name="address_error">Informe um endereço válido da sua rede local.</string>
     <string name="address_connect">Conectar</string>
+    <!-- ADB: tutorial revisado para Chromecast / Google TV -->
+    <string name="pairing_title">Pareie a TV antes de conectar</string>
+    <string name="pairing_body">Esta versão ainda não recebe o código de pareamento diretamente no celular. Use o computador para parear, ativar a porta 5555 e reconectar. Depois, autorize o próprio celular na TV.</string>
+    <string name="pairing_show_steps">Ver instruções de conexão pelo computador</string>
+    <string name="pairing_steps_title">Conectar a TV pelo ADB</string>
+    <string name="pairing_steps_intro">Na TV, ative Depuração sem fio e abra Parear dispositivo com código. Use a porta de pareamento no primeiro comando. Volte à tela principal de Depuração sem fio para encontrar a porta de conexão, que costuma ser diferente. Execute os comandos nesta ordem:</string>
+    <string name="pairing_steps_note">O primeiro comando solicitará o código de seis dígitos mostrado na TV. O terceiro usa -s para identificar a conexão correta, mesmo se houver mais de um dispositivo. Após ativar a porta 5555, reconecte e confira o estado device. Depois, volte ao CleanYourTV no celular, conecte-se ao IP da TV e autorize esse celular na tela da TV, caso seja solicitado. O pareamento do computador não autoriza automaticamente o celular.</string>
+    <string name="pairing_steps_safety">Segurança: a porta 5555 utiliza ADB tradicional, sem a criptografia de transporte da depuração sem fio. Utilize apenas em rede local confiável, nunca exponha à internet e desative a depuração após o uso. Ao reiniciar a TV ou desligar a depuração, talvez seja necessário configurar a porta novamente.</string>
 </resources>
