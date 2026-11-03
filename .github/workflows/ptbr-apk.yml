@@ -70,7 +70,7 @@ jobs:
           CYT_RELEASE_KEY_PASSWORD: ${{ secrets.CLEAN_TV_KEY_PASSWORD }}
         run: |
           chmod +x gradlew
-          ./gradlew check verifyRoborazziDebug --no-daemon --console=plain
+          ./gradlew check verifyRoborazziDebug :tv:bridge:testDebugUnitTest :app:testFullDebugUnitTest --no-daemon --console=plain
       - name: Gerar recursos pt-BR
         run: |
           python3 scripts/localize_ptbr.py --root . --report ptbr-cobertura.json --strict
