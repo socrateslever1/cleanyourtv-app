@@ -25,6 +25,7 @@ import tv.cleanyour.core.session.InstallOutcome
 internal object BridgeInstaller {
     private const val ASSET = "bridge/CleanYourTVBridge.apk"
     private const val MAX_APK = 8L * 1024 * 1024
+    data class Result(val installed: Boolean, val message: String)
 
     @OptIn(RawShell::class)
     suspend fun installed(graph: AppGraph, id: TvId): Boolean = withContext(Dispatchers.IO) {
@@ -36,12 +37,12 @@ internal object BridgeInstaller {
 
     @Suppress("DEPRECATION")
     suspend fun install(context: Context, graph: AppGraph, id: TvId,
-                        progress: (Int) -> Unit): String = withContext(Dispatchers.IO) {
+                        progress: (Int) -> Unit): Result = withContext(Dispatchers.IO) {
         val session = graph.access.live(id)
-            ?: return@withContext "TV desconectada. Reconecte antes de instalar o módulo."
+            ?: return@withContext Result(false, "TV desconectada. Reconecte antes de instalar o módulo.")
         val dir = File(context.cacheDir, "bridge")
         if (!dir.isDirectory && !dir.mkdirs())
-            return@withContext "Sem espaço para preparar o instalador do módulo."
+            return@withContext Result(false, "Sem espaço para preparar o instalador do módulo.")
         val temp = File(dir, "bridge-${UUID.randomUUID()}.apk")
         val hold = session.hold()
         try {
@@ -87,16 +88,16 @@ internal object BridgeInstaller {
                 progress(((bytes * 100L) / size).toInt().coerceIn(0, 100))
             }) {
                 is InstallOutcome.Installed ->
-                    "Módulo instalado na TV. Ao iniciar, autorize a captura na própria TV."
+                    Result(true, "Módulo instalado na TV. Ao iniciar, autorize a captura na própria TV.")
                 is InstallOutcome.Failed ->
-                    "Instalação recusada. Verifique espaço, compatibilidade e assinatura anterior do módulo."
+                    Result(false, "Instalação recusada. Verifique espaço, compatibilidade e assinatura anterior do módulo.")
             }
         } catch (e: CancellationException) {
             throw e
         } catch (e: java.io.FileNotFoundException) {
-            "O APK do módulo não está incluído nesta compilação do CleanYourTV."
+            Result(false, "O APK do módulo não está incluído nesta compilação do CleanYourTV.")
         } catch (e: Exception) {
-            e.message?.take(160) ?: "Não foi possível instalar o módulo na TV."
+            Result(false, e.message?.take(160) ?: "Não foi possível instalar o módulo na TV.")
         } finally {
             temp.delete()
             hold.close()
