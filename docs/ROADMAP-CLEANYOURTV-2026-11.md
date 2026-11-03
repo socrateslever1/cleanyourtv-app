@@ -29,6 +29,15 @@ Revisão: 2026-11-02. Este documento descreve trabalho de engenharia; não é te
 - **Limitação não resolvida:** a prévia é feita por PNGs sucessivos; **não é transmissão ao vivo contínua**. Um futuro modo de baixa latência requer uma solução de transporte de vídeo com consentimento e controles adequados, potencialmente via Bridge.
 - Alterações acima foram enviadas como código-fonte; carecem de compilação, testes automatizados executados e homologação em aparelho real.
 
+## Código adicional de vídeo contínuo e reconexão (2026-11-02)
+
+- A prévia agora tenta uma **transmissão H.264 real** pelo utilitário `screenrecord --output-format=h264 -` do próprio Android, com decodificação por `MediaCodec` no celular e apresentação em `SurfaceView`. Não exige instalar Bridge ou escrever vídeos na TV.
+- O vídeo é iniciado automaticamente ao abrir o visualizador. Cada execução remota dura até 150 segundos e é reiniciada quando termina normalmente, abaixo do limite de 180 segundos do Android.
+- Se o firmware não disponibilizar `screenrecord`, o encoder H.264 ou o decodificador, o app retorna às capturas PNG (preferencialmente transmitidas diretamente pela sessão ADB).
+- O vídeo tem limite de banda, memória e tempo, não transmite áudio e não contorna conteúdo protegido por DRM. **Não homologado no Chromecast real nem compilado em APK de produção**.
+- O assistente permanece ouvindo mDNS durante a etapa de pareamento; anúncio de ADB TCP revalida a porta 5555 e avança para conexão automaticamente sem reabrir o assistente.
+- **A porta TLS dinâmica permanece sem conexão nativa**. A descoberta por mDNS já existe, mas autenticação SPAKE2/TLS direta pelo celular requer implementação adicional: a porta 5555 continua sendo compatibilidade, não solução definitiva. Não autorizar downgrade para ADB TCP automaticamente sem consentimento.
+
 ## Pendências prioritárias
 
 ### P0 — Entrega instalável e ausência de regressões
