@@ -19,7 +19,8 @@
     <string name="tv_apk_title">Install APK on TV</string>
     <string name="tv_apk_preparing">Checking the chosen APK on your phone…</string>
     <string name="tv_apk_confirm_title">Install this external app?</string>
-    <string name="tv_apk_confirm_body">Package: %1$s. Version: %2$s. Size: %3$d MB. Install only apps you trust. This action changes the TV and is separate from cleanup/restoration.</string>
+    <string name="tv_apk_confirm_body">Destination TV: %4$s. Package: %1$s. Version: %2$s. Size: %3$d MB. Install only apps you trust. This changes the chosen TV and is separate from cleanup and restoration.</string>
+    <string name="tv_apk_unknown_tv">Selected TV</string>
     <string name="tv_apk_install">Install on TV</string>
     <string name="tv_apk_cancel">Cancel</string>
     <string name="tv_apk_progress">Installing on TV: %1$d%%</string>
