@@ -3,6 +3,20 @@
 package tv.cleanyour.feature.manage
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Text
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -119,6 +133,101 @@ fun ManageScreen(state: ManageState, onIntent: (ManageIntent) -> Unit, modifier:
             )
             if (state.reconnecting) LiveLine(stringResource(R.string.manage_reconnecting))
         }
+        // Painel inicial: escolha explícita do dispositivo antes de qualquer ação.
+        Text("Seus dispositivos", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 24.dp))
+        Text("Escolha em qual aparelho deseja agir.", color = Color(0xFFC9C7D5), fontSize = 13.sp,
+            modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            state.cards.forEach { card ->
+                val selected = card.id == tv?.id
+                Card(
+                    onClick = { if (!selected) onIntent(ManageIntent.Select(card.id)) },
+                    modifier = Modifier.width(156.dp).height(116.dp),
+                    shape = RoundedCornerShape(18.dp),
+                    border = BorderStroke(if (selected) 2.dp else 1.dp,
+                        if (selected) Color(0xFFB18CFF) else Color(0xFF53505F)),
+                    colors = CardDefaults.cardColors(containerColor = if (selected) Color(0xFF29213F) else Color(0xFF1B1C28)),
+                ) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(if (selected) "✓ Selecionado" else "TV salva",
+                            color = if (selected) Color(0xFFBFA9FF) else Color(0xFFB2B0C4), fontSize = 11.sp)
+                        Text(card.name, color = Color.White, fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        card.room?.let { Text(it, color = Color(0xFFB9B5C6), fontSize = 12.sp,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                    }
+                }
+            }
+            Card(
+                onClick = { onIntent(ManageIntent.SetUpAnother) },
+                modifier = Modifier.width(156.dp).height(116.dp),
+                shape = RoundedCornerShape(18.dp),
+                border = BorderStroke(1.dp, Color(0xFF77718A)),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF191A25)),
+            ) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.Center) {
+                    Text("+", color = Color(0xFFBFA9FF), fontSize = 28.sp)
+                    Text("Adicionar dispositivo", color = Color.White, fontSize = 14.sp,
+                        fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+
+        Text("Ações rápidas", color = Color.White, fontSize = 22.sp, fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(top = 26.dp))
+        Text("Selecione um aparelho e escolha o que fazer.", color = Color(0xFFC9C7D5),
+            fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp, bottom = 12.dp))
+        if (tv == null) {
+            Banner("Adicione ou selecione um dispositivo para liberar as ferramentas.",
+                BannerTone.INFO, Modifier.padding(bottom = 12.dp))
+        } else {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                HomeActionTile("▷", "Ver tela ao vivo", Color(0xFF24385B),
+                    { onViewTv(tv.id) }, Modifier.weight(1f))
+                HomeActionTile("↓", "Instalar APK", Color(0xFF382447),
+                    { onInstallApk(tv.id) }, Modifier.weight(1f))
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                HomeActionTile("▦", "Ferramentas da TV", Color(0xFF173E39),
+                    { onTvTools(tv.id) }, Modifier.weight(1f))
+                // A limpeza abre o assistente existente, sem executar alterações imediatamente.
+                HomeActionTile("✦", "Limpeza rápida", Color(0xFF19424B),
+                    { onIntent(ManageIntent.CleanAgain) }, Modifier.weight(1f))
+            }
+            Text("Continuar de onde parei", color = Color.White, fontSize = 19.sp,
+                fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 26.dp, bottom = 10.dp))
+            Card(onClick = { onViewTv(tv.id) },
+                shape = RoundedCornerShape(16.dp),
+                colors = CardDefaults.cardColors(containerColor = Color(0xFF262532)),
+                modifier = Modifier.fillMaxWidth()) {
+                Row(Modifier.fillMaxWidth().padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Última TV selecionada", color = Color(0xFFC9C7D5), fontSize = 12.sp)
+                        Text(tv.name, color = Color.White, fontWeight = FontWeight.SemiBold,
+                            maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    Text("Retomar ›", color = Color(0xFFC6AEFF), fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+        Text("Em segundo plano", color = Color(0xFFC9C7D5), fontSize = 17.sp,
+            fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 26.dp, bottom = 8.dp))
+        Card(colors = CardDefaults.cardColors(containerColor = Color(0xFF1B1C27)),
+            shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+            Text("Conexão e gerenciamento disponíveis quando necessários.",
+                color = Color(0xFFB4B2C2), fontSize = 13.sp,
+                modifier = Modifier.padding(16.dp))
+        }
+        Text("Gerenciamento avançado", color = Color(0xFFC9C7D5),
+            fontSize = 17.sp, fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.padding(top = 26.dp))
+
         if (tv != null) {
             val room = tv.room
             val stateWord = stringResource(if (tv.clean) R.string.manage_state_clean else R.string.manage_state_original)
@@ -184,26 +293,34 @@ fun ManageScreen(state: ManageState, onIntent: (ManageIntent) -> Unit, modifier:
                 ListRow(stringResource(R.string.manage_row_restore), subtitle = tv.restorePointAtMs?.let { msg(R.string.manage_row_restore_sub, "date" to shortDateTime(it, locale)) },
                     onClick = { onIntent(ManageIntent.Open(ManageSection.RESTORE_POINT)) })
                 ListDivider()
-                ListRow(stringResource(R.string.manage_install_apk), subtitle = stringResource(R.string.manage_install_apk_note),
-                    onClick = { onInstallApk(tv.id) })
-                ListDivider()
-                ListRow(stringResource(R.string.manage_bridge_title),
-                    subtitle = stringResource(R.string.manage_bridge_note),
-                    onClick = { onViewTv(tv.id) })
-                ListDivider()
-                ListRow(stringResource(R.string.manage_tv_tools), subtitle = stringResource(R.string.manage_tv_tools_note),
-                    onClick = { onTvTools(tv.id) })
-                ListDivider()
                 ListRow(stringResource(R.string.manage_row_tvsettings), onClick = { onIntent(ManageIntent.Open(ManageSection.TV_SETTINGS)) })
             }
         }
-        val others = state.cards.filter { it.id != tv?.id }
-        ListGroup(Modifier.padding(top = 12.dp, bottom = 16.dp)) {
-            others.forEach { other ->
-                ListRow(other.name, subtitle = other.room, onClick = { onIntent(ManageIntent.Select(other.id)) })
-                ListDivider()
-            }
-            LinkRow(stringResource(R.string.manage_add_tv), { onIntent(ManageIntent.SetUpAnother) }, chevron = false, minHeight = 56.dp)
+
+    }
+}
+
+
+// Action cards intentionally dispatch existing guarded flows; they never write to ADB directly.
+@Composable
+private fun HomeActionTile(
+    symbol: String,
+    label: String,
+    tint: Color,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        onClick = onClick,
+        modifier = modifier.height(94.dp),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = tint),
+        border = BorderStroke(1.dp, Color(0xFF5A536D)),
+    ) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.SpaceBetween) {
+            Text(symbol, color = Color(0xFFCCB9FF), fontSize = 23.sp)
+            Text(label, color = Color.White, fontSize = 14.sp,
+                fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
         }
     }
 }

@@ -279,7 +279,6 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
                     LaunchedEffect(confirmedTvId) {
                         if (confirmedTvId != null && !firstPreviewOpened) {
                             firstPreviewOpened = true
-                            tvViewerTarget = confirmedTvId
                         }
                     }
                     BackHandler { if (!m.back()) { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) else onExit() } }
@@ -290,43 +289,9 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
                 entry<Dest.Manage> { key ->
                     val m = rememberMachine("manage:${key.tvId}") { graph.manage(it, key.tvId?.let(::TvId)) }
                     val state by m.state.collectAsStateWithLifecycle()
-                    var deviceConfirmed by rememberSaveable { mutableStateOf(false) }
                     LaunchedEffect(m) { m.effects.collect { onManageEffect(it) } }
                     ManageScreen(state, m::dispatch, onInstallApk = { apkInstallTarget = it }, onTvTools = { tvToolsTarget = it }, onViewTv = { tvViewerTarget = it })
-                    // Seleção explícita mesmo quando o aplicativo reconhece uma TV salva.
-                    // Nenhuma operação de alteração pode ser acionada antes da escolha.
-                    if (!state.loading && state.cards.isNotEmpty() && !deviceConfirmed) {
-                        androidx.compose.material3.AlertDialog(
-                            onDismissRequest = {},
-                            title = { androidx.compose.material3.Text("Qual dispositivo deseja gerenciar?") },
-                            text = {
-                                androidx.compose.foundation.layout.Column {
-                                    state.cards.forEach { card ->
-                                        androidx.compose.material3.TextButton(onClick = {
-                                            m.dispatch(ManageIntent.Select(card.id))
-                                            deviceConfirmed = true
-                                            // After the owner chooses the saved device, open its
-                                            // screenshot preview without another menu or tap.
-                                            // TvViewerDialog holds and releases its own ADB session.
-                                            tvViewerTarget = card.id
-                                        }) {
-                                            androidx.compose.material3.Text(card.name + (card.room?.let { " — " + it } ?: ""))
-                                        }
-                                    }
-                                    androidx.compose.material3.Text(
-                                        "Selecione um dispositivo antes de consultar ou alterar suas configurações. " +
-                                            "As ações de limpeza e restauração exigem confirmação própria."
-                                    )
-                                }
-                            },
-                            confirmButton = {
-                                androidx.compose.material3.TextButton(onClick = {
-                                    deviceConfirmed = true
-                                    m.dispatch(ManageIntent.SetUpAnother)
-                                }) { androidx.compose.material3.Text("Adicionar outro dispositivo") }
-                            }
-                        )
-                    }
+
                 }
                 entry<Dest.SwitchedOff> { key ->
                     val m = rememberMachine("off:${key.tvId}") { graph.switchedOff(it, TvId(key.tvId)) }
