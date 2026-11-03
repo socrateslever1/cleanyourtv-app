@@ -172,6 +172,7 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
     val view = LocalView.current
     val scope = rememberCoroutineScope()
     var apkInstallTarget by remember { mutableStateOf<TvId?>(null) }
+    var bridgeInstallTarget by remember { mutableStateOf<TvId?>(null) }
     var showWearInspector by remember { mutableStateOf(false) }
     var showPhoneInspector by remember { mutableStateOf(false) }
     var tvToolsTarget by remember { mutableStateOf<TvId?>(null) }
@@ -413,13 +414,28 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
         val reach by graph.access.reach.collectAsStateWithLifecycle()
         if (reach !is Reach.Idle) DebugStepSheet(reach) { graph.access.cancelWaiting() }
         apkInstallTarget?.let { id -> TvApkInstallDialog(graph, id) { apkInstallTarget = null } }
+        bridgeInstallTarget?.let { id ->
+            BridgeInstallDialog(graph, id,
+                onInstalled = {
+                    bridgeInstallTarget = null
+                    tvViewerTarget = id
+                },
+                onClose = { bridgeInstallTarget = null })
+        }
         if (showWearInspector) WearOsReadOnlyDialog(graph) { showWearInspector = false }
         if (showPhoneInspector) PhoneDiagnosticsDialog(context) { showPhoneInspector = false }
         tvToolsTarget?.let { id -> TvToolsDialog(graph, id,
             onInstallApk = { tvToolsTarget = null; apkInstallTarget = id },
             onViewTv = { tvToolsTarget = null; tvViewerTarget = id },
             onClose = { tvToolsTarget = null }) }
-        tvViewerTarget?.let { id -> TvViewerDialog(graph, id) { tvViewerTarget = null } }
+        tvViewerTarget?.let { id ->
+            TvViewerDialog(graph, id,
+                onInstallBridge = {
+                    tvViewerTarget = null
+                    bridgeInstallTarget = id
+                },
+                onClose = { tvViewerTarget = null })
+        }
         SnackbarHost(snack, Modifier.align(Alignment.BottomCenter).padding(16.dp))
     }
 }
