@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="manage_bridge_title">Espelhar a TV no celular</string>
+    <string name="manage_bridge_note">Instale o módulo opcional na TV e autorize cada sessão de compartilhamento de tela.</string>
+</resources>
