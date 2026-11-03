@@ -269,7 +269,18 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
                     val m = rememberMachine("setup:${key.tvId}:${key.planId}") { graph.setup(it, start) }
                     val state by m.state.collectAsStateWithLifecycle()
                     val extras by m.extras.collectAsStateWithLifecycle()
+                    var firstPreviewOpened by rememberSaveable { mutableStateOf(false) }
                     LaunchedEffect(m) { m.effects.collect { onSetupEffect(it) } }
+                    // A new TV is only previewed after identity confirmation and the
+                    // read-only inspection succeed. Do not interrupt the pairing or
+                    // authorization dialog, nor start competing ADB screenshot reads.
+                    val confirmedTvId = (state as? SetupState.Found)?.tvId
+                    LaunchedEffect(confirmedTvId) {
+                        if (confirmedTvId != null && !firstPreviewOpened) {
+                            firstPreviewOpened = true
+                            tvViewerTarget = confirmedTvId
+                        }
+                    }
                     BackHandler { if (!m.back()) { if (backStack.size > 1) backStack.removeAt(backStack.lastIndex) else onExit() } }
                     SecureWindow((state as? SetupState.OpenDoor)?.phase == DoorPhase.ALLOW)
                     if (isConnectState(state)) ConnectFlow(state, extras, m, onReturning = { go("returning") }, onCopyError = { copyText(context, it, "error") })
@@ -293,6 +304,10 @@ fun AppRoot(graph: AppGraph, start: Dest, onExit: () -> Unit) {
                                         androidx.compose.material3.TextButton(onClick = {
                                             m.dispatch(ManageIntent.Select(card.id))
                                             deviceConfirmed = true
+                                            // After the owner chooses the saved device, open its
+                                            // screenshot preview without another menu or tap.
+                                            // TvViewerDialog holds and releases its own ADB session.
+                                            tvViewerTarget = card.id
                                         }) {
                                             androidx.compose.material3.Text(card.name + (card.room?.let { " — " + it } ?: ""))
                                         }
