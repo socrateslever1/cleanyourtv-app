@@ -54,6 +54,7 @@ object ModuleRules {
         ":benchmark" to 10,
         // RFC-CURTAIN-1: a separate TV app, bundled as a signed asset, never a Gradle dependency (rule 7).
         ":tv:curtain" to 10,
+        ":tv:bridge" to 10,
     )
 
     // Rule 5: these may only be reached through test configurations.
@@ -105,6 +106,7 @@ object ModuleRules {
         ":app" to androidCommon,
         ":benchmark" to androidCommon,
         ":tv:curtain" to emptySet(),
+        ":tv:bridge" to emptySet(),
     )
 
     // Test configurations: test libraries only (section 7.2 of ARCHITECTURE).
