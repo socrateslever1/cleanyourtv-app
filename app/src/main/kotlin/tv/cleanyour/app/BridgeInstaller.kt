@@ -98,7 +98,10 @@ internal object BridgeInstaller {
         } catch (e: java.io.FileNotFoundException) {
             Result(false, "O APK do módulo não está incluído nesta compilação do CleanYourTV.")
         } catch (e: Exception) {
-            Result(false, e.message?.take(160) ?: "Não foi possível instalar o módulo na TV.")
+            // Do not expose raw Android/ADB exception messages in the pt-BR UI.
+            Result(false, if (e is IllegalStateException)
+                e.message?.take(160) ?: "Não foi possível instalar o módulo na TV."
+                else "Não foi possível instalar o módulo. Confira a conexão, o espaço e a compatibilidade da TV.")
         } finally {
             temp.delete()
             hold.close()
