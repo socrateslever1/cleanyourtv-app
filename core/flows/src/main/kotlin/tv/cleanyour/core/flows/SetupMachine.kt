@@ -416,6 +416,16 @@ class SetupMachine(
         return when (state) {
             is SetupState.Welcome -> state.copy(found = merge(state.found), onWifi = (e as? DiscoveryEvent.NetworkState)?.onWifi ?: state.onWifi)
             is SetupState.Picker -> state.copy(found = merge(state.found))
+            is SetupState.PairingNeeded -> {
+                // Do not strand the owner on the pairing instructions after
+                // adbd announces its newly enabled 5555 service.
+                val found = when (e) {
+                    is DiscoveryEvent.Found -> e.tv
+                    is DiscoveryEvent.Updated -> e.tv
+                    else -> null
+                }
+                if (found?.host == state.tv.host && found.port5555Open == true) door(found) else state
+            }
             else -> state
         }
     }
@@ -568,7 +578,8 @@ class SetupMachine(
     // Starts and stops the background jobs that belong to each state (F1: discovery only on
     // Welcome, the picker and a door with no TV yet; the port probe only while waiting for it).
     private fun afterTransition(s: SetupState) {
-        val looking = s is SetupState.Welcome || s is SetupState.Picker || (s is SetupState.OpenDoor && s.tv.host.isEmpty())
+        val looking = s is SetupState.Welcome || s is SetupState.Picker || s is SetupState.PairingNeeded ||
+            (s is SetupState.OpenDoor && s.tv.host.isEmpty())
         if (looking && discoveryJob?.isActive != true) {
             discoveryJob = scope.launch { deps.discovery.discover().collect { e -> onDiscovery(e) } }
         } else if (!looking) { discoveryJob?.cancel(); discoveryJob = null }
