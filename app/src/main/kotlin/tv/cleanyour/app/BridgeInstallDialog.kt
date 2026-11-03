@@ -41,7 +41,10 @@ internal fun BridgeInstallDialog(
                     "O módulo permite transmitir a tela da TV para este celular. " +
                     "A instalação será feita por ADB somente após sua confirmação. " +
                     "Cada transmissão exige autorização na própria TV, pode ser " +
-                    "interrompida e não exibe conteúdo protegido por DRM."
+                    "interrompida e não exibe conteúdo protegido por DRM.\n\n" +
+                    "Segurança: use apenas Wi-Fi confiável. A porta ADB 5555 " +
+                    "não criptografa os comandos de inicialização, embora o vídeo " +
+                    "transmitido pelo módulo seja criptografado."
             )
         },
         confirmButton = {
