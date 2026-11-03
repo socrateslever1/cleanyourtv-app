@@ -57,6 +57,12 @@ public final class MirrorActivity extends Activity {
         setContentView(root);
     }
 
+    @Override protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        recreate();
+    }
+
     @Override protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode != CAPTURE || resultCode != RESULT_OK || data == null ||
