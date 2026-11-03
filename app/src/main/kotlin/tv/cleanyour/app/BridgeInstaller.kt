@@ -79,7 +79,8 @@ internal object BridgeInstaller {
                 ExecSpec(timeoutMs = 10_000, stdoutCap = 64 * 1024))
             if (features.exit != 0 || features.truncated ||
                 features.stdout.contains("feature:android.hardware.type.watch") ||
-                !features.stdout.contains("feature:android.software.leanback")) {
+                (!features.stdout.contains("feature:android.software.leanback") &&
+                    !features.stdout.contains("feature:android.hardware.type.television"))) {
                 throw IllegalStateException("O dispositivo não foi identificado como Android TV.")
             }
             val hash = digest.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
