@@ -20,6 +20,15 @@ Revisão: 2026-11-02. Este documento descreve trabalho de engenharia; não é te
 5. **Android celular e Wear OS**: atualmente diagnósticos e ações limitadas; o monitoramento de Wear OS é somente leitura. Não anunciar limpeza avançada nesses dispositivos.
 6. **Atualização própria**: fluxo GitHub Actions com assinatura permanente, validação de pacote, certificado, versão e hash; ainda depende de execução bem-sucedida e confirmação de que o update instala por cima do APK oficial sem perder dados.
 
+## Progresso de 2026-11-02: conexão e visualização
+
+- A prévia por capturas de tela agora é aberta automaticamente após a inspeção inicial da TV e a confirmação de sua identidade, ou quando o usuário escolhe um dispositivo já cadastrado na tela de gerenciamento. Fechar a prévia retorna à interface anterior.
+- O visualizador passa a solicitar uma atualização imediatamente após comandos remotos concluídos e oferece ação manual `Atualizar imagem agora`. O período normal de atualização continua limitado a 1,2 s, além do tempo de obtenção e transferência de cada captura.
+- O tutorial ADB explica portas TLS dinâmicas, diferença entre pareamento e conexão, descoberta `adb mdns services`, endereço IP DHCP e uso temporário de TCP/5555.
+- **Limitação não resolvida:** pareamento ADB/TLS diretamente no Android não foi implementado. O app descobre anúncios mDNS, mas ainda não autentica conexão TLS; não afirmar que a troca de porta deixou de ser necessária em todos os dispositivos.
+- **Limitação não resolvida:** a prévia é feita por PNGs sucessivos; **não é transmissão ao vivo contínua**. Um futuro modo de baixa latência requer uma solução de transporte de vídeo com consentimento e controles adequados, potencialmente via Bridge.
+- Alterações acima foram enviadas como código-fonte; carecem de compilação, testes automatizados executados e homologação em aparelho real.
+
 ## Pendências prioritárias
 
 ### P0 — Entrega instalável e ausência de regressões
