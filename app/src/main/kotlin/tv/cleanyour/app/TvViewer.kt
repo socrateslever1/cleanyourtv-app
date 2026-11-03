@@ -45,6 +45,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import tv.cleanyour.adb.session.AdbTvSession
 import tv.cleanyour.core.flows.AccessResult
 import tv.cleanyour.core.flows.RemoteKey
 import tv.cleanyour.core.flows.mapRemoteTouch
@@ -116,19 +117,30 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
         try {
             status = "Atualizando imagem…"
             var errors = 0
+            var directCaptureAvailable = connected is AdbTvSession
             while (isActive) {
                 val next = try {
                     withContext(Dispatchers.IO) {
-                        val spec = ExecSpec(timeoutMs = 15000, idleTimeoutMs = 8000, stdoutCap = 1024)
-                        val remoteName = remoteFile.absolute
-                        try {
-                            val result = connected.exec(ShellLine("mkdir -p ${RemoteDir.TMP.path} && screencap -p '$remoteName'"), spec)
-                            if (result.exit == 0) connected.pull(remoteFile, 16L * 1024 * 1024)?.let(::decodeTvFrame) else null
-                        } finally {
-                            withContext(NonCancellable) {
-                                withTimeoutOrNull(3000) {
-                                    runCatching { connected.exec(ShellLine("rm -f '$remoteName'"),
-                                        ExecSpec(timeoutMs = 2500, idleTimeoutMs = 2000, stdoutCap = 1024)) }
+                        // Fast path: read binary PNG directly from ADB shell v2.
+                        // Avoid mkdir, writing a file, SYNC pull and rm on every
+                        // frame; fall back once per session if the TV refuses it.
+                        val direct = if (directCaptureAvailable) {
+                            runCatching { (connected as AdbTvSession).captureScreenPng()?.let(::decodeTvFrame) }
+                                .getOrNull()
+                        } else null
+                        if (direct != null) direct else {
+                            directCaptureAvailable = false
+                            val spec = ExecSpec(timeoutMs = 15000, idleTimeoutMs = 8000, stdoutCap = 1024)
+                            val remoteName = remoteFile.absolute
+                            try {
+                                val result = connected.exec(ShellLine("mkdir -p ${RemoteDir.TMP.path} && screencap -p '$remoteName'"), spec)
+                                if (result.exit == 0) connected.pull(remoteFile, 16L * 1024 * 1024)?.let(::decodeTvFrame) else null
+                            } finally {
+                                withContext(NonCancellable) {
+                                    withTimeoutOrNull(3000) {
+                                        runCatching { connected.exec(ShellLine("rm -f '$remoteName'"),
+                                            ExecSpec(timeoutMs = 2500, idleTimeoutMs = 2000, stdoutCap = 1024)) }
+                                    }
                                 }
                             }
                         }
