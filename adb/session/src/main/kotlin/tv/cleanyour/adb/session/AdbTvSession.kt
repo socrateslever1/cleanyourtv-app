@@ -16,6 +16,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import tv.cleanyour.adb.wire.AdbConnection
 import tv.cleanyour.adb.wire.AdbService
 import tv.cleanyour.adb.wire.AdbSigner
@@ -293,6 +294,46 @@ class AdbTvSession internal constructor(
     override suspend fun exec(line: ShellLine, spec: ExecSpec): ExecResult {
         PmGuard.refusal(line.text)?.let { throw AdbException(AdbError.Policy.GuardFailed(0, it)) }
         return call(spec.retry) { conn -> Exec.run(conn, line, spec, clock) }
+    }
+
+    /**
+     * Live H.264 video from Android's built-in screenrecord utility, without
+     * installing code or writing a large recording file on the Chromecast.
+     * Runs on its own ADB stream: the interactive session mutex is NOT held,
+     * allowing the remote controls to respond while video is being received.
+     *
+     * One encoder session is bounded to 150 s (AOSP limit: 180 s). The caller
+     * restarts only successful sessions and falls back to PNG screenshots if
+     * recording or decoding is unavailable. Cancelling closes the stream.
+     */
+    @OptIn(tv.cleanyour.core.model.RawShell::class)
+    suspend fun streamScreenH264(onChunk: suspend (ByteArray) -> Unit): Boolean {
+        val c = connection?.takeUnless { it.isClosed }
+            ?: throw AdbException(AdbError.Transport.Closed)
+        val command = ShellLine("screenrecord --output-format=h264 --size 1280x720 --bit-rate 1800000 --time-limit 150 -")
+        val stream = c.openBounded(AdbService.ShellV2(command), 5_000)
+        try {
+            return withTimeout(160_000) {
+                val reader = AdbStreamReader(stream)
+                var received = 0L
+                while (true) {
+                    when (val packet = withTimeout(20_000) { ShellV2.next(reader) }) {
+                        is ShellPacket.Stdout -> {
+                            received += packet.bytes.size
+                            if (received > 45L * 1024 * 1024) return@withTimeout false
+                            if (packet.bytes.isNotEmpty()) onChunk(packet.bytes)
+                        }
+                        is ShellPacket.Stderr -> Unit
+                        is ShellPacket.Exit -> return@withTimeout packet.code == 0 && received > 1_024
+                        null -> return@withTimeout false
+                    }
+                }
+                @Suppress("UNREACHABLE_CODE")
+                false
+            }
+        } finally {
+            stream.close()
+        }
     }
 
     /**
