@@ -105,10 +105,14 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onInstallBridge: () -> 
     var bridgeInstalled by remember(tvId) { mutableStateOf(false) }
     var bridgeSessionKey by remember(tvId) { mutableStateOf<String?>(null) }
     var bridgeStarting by remember(tvId) { mutableStateOf(false) }
-    val bridgeHost = remember(tvId) {
-        graph.tvs.tvs.value.firstOrNull { it.id == tvId }?.endpoints
-            ?.filterIsInstance<Endpoint.PlainTcp>()?.firstOrNull()?.host.orEmpty()
-    }
+    // Prefer the verified, current ADB endpoint. The TV's DHCP address may
+    // have changed since the first time this device was registered.
+    val bridgeHost = (
+        (session?.state?.value as? tv.cleanyour.core.model.ConnectionState.Connected)
+            ?.endpoint?.host
+            ?: graph.tvs.tvs.value.firstOrNull { it.id == tvId }?.endpoints
+                ?.filterIsInstance<Endpoint.PlainTcp>()?.firstOrNull()?.host
+        ).orEmpty()
     // TextureView composites beneath Compose overlays correctly. An opaque
     // SurfaceView could cover the PNG fallback with black before first video.
     val videoCallback = remember(tvId) {
@@ -175,7 +179,7 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onInstallBridge: () -> 
             else runCatching { BridgeInstaller.installed(graph, tvId) }.getOrDefault(false)
     }
 
-    LaunchedEffect(tvId, bridgeSessionKey, videoSurface, session) {
+    LaunchedEffect(tvId, bridgeSessionKey, videoSurface, session, bridgeHost) {
         val secret = bridgeSessionKey ?: return@LaunchedEffect
         val surface = videoSurface?.takeIf { it.isValid } ?: return@LaunchedEffect
         if (session == null || !BridgeClient.privateIpv4(bridgeHost)) return@LaunchedEffect
