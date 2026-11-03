@@ -19,9 +19,9 @@ internal class AnnexBVideo {
     private var hasSlice = false
 
     private companion object {
-        const val MAX_NAL = 1024 * 1024
+        const val MAX_NAL = 2 * 1024 * 1024
         const val MAX_PICTURE = 2 * 1024 * 1024
-        const val MAX_CHUNK = 1024 * 1024
+        const val MAX_CHUNK = 2 * 1024 * 1024
     }
 
     fun accept(chunk: ByteArray): List<ByteArray> {
