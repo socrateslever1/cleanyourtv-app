@@ -38,8 +38,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withTimeoutOrNull
@@ -91,6 +91,9 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
     var displaySize by remember { mutableStateOf(IntSize.Zero) }
     var input by remember { mutableStateOf("") }
     var retry by remember(tvId) { mutableStateOf(0) }
+    // One pending refresh at most: remote-control bursts must not queue dozens
+    // of expensive PNG captures or starve interactive ADB commands.
+    val refreshRequests = remember(tvId) { Channel<Unit>(Channel.CONFLATED) }
     val remoteFile = remember(tvId, retry) {
         RemotePath(RemoteDir.TMP, listOf("viewer-" + java.util.UUID.randomUUID().toString() + ".png"))
     }
@@ -142,7 +145,9 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
                         "Falha na captura; tentando novamente…"
                     if (errors >= 3) break
                 }
-                delay(1200)
+                // Refresh at least once every 1.2 s, but also immediately after
+                // each completed remote action. A conflated signal bounds memory.
+                withTimeoutOrNull(1_200) { refreshRequests.receive() }
             }
         } finally {
             session = null
@@ -156,6 +161,7 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
             try {
                 val result = withContext(Dispatchers.IO) { s.exec(ShellLine(command), runSpec) }
                 if (result.exit != 0) status = "A TV recusou o comando."
+                else refreshRequests.trySend(Unit)
             } catch (e: CancellationException) { throw e }
               catch (_: Exception) { status = "Não foi possível enviar o comando. Verifique a conexão." }
         }
@@ -189,7 +195,10 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
                     if (frame == null) Text("Aguardando imagem da TV", color = androidx.compose.ui.graphics.Color.White)
                 }
                 Text(status)
-                Text("Toque na imagem para selecionar itens. A atualização pode demorar alguns segundos.")
+                Text("Prévia por capturas periódicas, não transmissão contínua. A imagem é atualizada após cada comando enviado.")
+                OutlinedButton(onClick = { refreshRequests.trySend(Unit) }, enabled = session != null) {
+                    Text("Atualizar imagem agora")
+                }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedButton(onClick = { press(RemoteKey.HOME) }, enabled = session != null) { Text("Início") }
                     OutlinedButton(onClick = { press(RemoteKey.BACK) }, enabled = session != null) { Text("Voltar") }
