@@ -55,6 +55,7 @@ import tv.cleanyour.core.flows.AccessResult
 import tv.cleanyour.core.flows.RemoteKey
 import tv.cleanyour.core.flows.mapRemoteTouch
 import tv.cleanyour.core.model.RawShell
+import tv.cleanyour.core.model.Endpoint
 import tv.cleanyour.core.model.RemoteDir
 import tv.cleanyour.core.model.RemotePath
 import tv.cleanyour.core.model.ShellLine
@@ -89,7 +90,7 @@ internal fun validatedRemoteText(value: String): String? {
 
 @OptIn(RawShell::class)
 @Composable
-internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
+internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onInstallBridge: () -> Unit, onClose: () -> Unit) {
     val scope = rememberCoroutineScope()
     var frame by remember(tvId) { mutableStateOf<TvFrame?>(null) }
     var status by remember(tvId) { mutableStateOf("Conectando à TV…") }
@@ -101,6 +102,13 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
     var videoFailed by remember(tvId) { mutableStateOf(false) }
     var videoPlaying by remember(tvId) { mutableStateOf(false) }
     var videoSurface by remember(tvId) { mutableStateOf<Surface?>(null) }
+    var bridgeInstalled by remember(tvId) { mutableStateOf(false) }
+    var bridgeSessionKey by remember(tvId) { mutableStateOf<String?>(null) }
+    var bridgeStarting by remember(tvId) { mutableStateOf(false) }
+    val bridgeHost = remember(tvId) {
+        graph.tvs.tvs.value.firstOrNull { it.id == tvId }?.endpoints
+            ?.filterIsInstance<Endpoint.PlainTcp>()?.firstOrNull()?.host.orEmpty()
+    }
     val videoCallback = remember(tvId) {
         object : SurfaceHolder.Callback {
             override fun surfaceCreated(holder: SurfaceHolder) { videoSurface = holder.surface }
@@ -122,10 +130,10 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
     // Prefer actual H.264 video on Chromecast/Google TV that permits screenrecord.
     // Each recording ends at 150 s and is restarted; incompatible firmware
     // automatically falls back to the safer PNG preview without data loss.
-    LaunchedEffect(tvId, session, videoSurface, videoRequested, videoFailed) {
+    LaunchedEffect(tvId, session, videoSurface, videoRequested, videoFailed, bridgeSessionKey) {
         val tv = session as? AdbTvSession ?: return@LaunchedEffect
         val surface = videoSurface?.takeIf { it.isValid } ?: return@LaunchedEffect
-        if (!videoRequested || videoFailed) return@LaunchedEffect
+        if (!videoRequested || videoFailed || bridgeSessionKey != null) return@LaunchedEffect
         val hold = tv.hold()
         try {
             var failures = 0
@@ -151,6 +159,34 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
         } finally {
             videoPlaying = false
             hold.close()
+        }
+    }
+
+    LaunchedEffect(tvId, session) {
+        bridgeInstalled = if (session == null) false
+            else runCatching { BridgeInstaller.installed(graph, tvId) }.getOrDefault(false)
+    }
+
+    LaunchedEffect(tvId, bridgeSessionKey, videoSurface, session) {
+        val secret = bridgeSessionKey ?: return@LaunchedEffect
+        val surface = videoSurface?.takeIf { it.isValid } ?: return@LaunchedEffect
+        if (session == null || !BridgeClient.privateIpv4(bridgeHost)) return@LaunchedEffect
+        status = "Aguardando autorização da captura na TV…"
+        try {
+            val actualVideo = TvH264Player.playBridge(bridgeHost, secret, surface) {
+                videoPlaying = true
+                status = "Espelhamento ao vivo iniciado."
+            }
+            if (!actualVideo) {
+                status = "O módulo não transmitiu vídeo. Confira a autorização na TV e a rede local."
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (_: Exception) {
+            status = "Transmissão interrompida. Verifique a autorização na TV."
+        } finally {
+            videoPlaying = false
+            bridgeSessionKey = null
         }
     }
 
@@ -208,11 +244,11 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
                   catch (_: Exception) { null }
                 if (next != null) {
                     frame = next
-                    status = "Visualização por capturas sucessivas (não é vídeo fluido)."
+                    if (bridgeSessionKey == null) status = "Prévia por capturas periódicas (não é vídeo fluido)."
                     errors = 0
                 } else {
                     errors++
-                    status = if (errors >= 3) "A TV não disponibilizou a imagem. Conteúdo protegido pode aparecer preto." else
+                    if (bridgeSessionKey == null) status = if (errors >= 3) "A TV não disponibilizou a imagem. Conteúdo protegido pode aparecer preto." else
                         "Falha na captura; tentando novamente…"
                     if (errors >= 3) break
                 }
@@ -239,7 +275,7 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
     }
     fun press(key: RemoteKey) { submit("input keyevent ${key.androidKeyCode}") }
 
-    Dialog(onDismissRequest = onClose,
+    Dialog(onDismissRequest = { bridgeSessionKey = null; onClose() },
         properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(Modifier.fillMaxWidth(.98f).fillMaxHeight(.94f)) {
             Column(Modifier.padding(12.dp).verticalScroll(rememberScrollState()),
@@ -248,7 +284,7 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically) {
                     Text("Visualizar e controlar a TV")
-                    OutlinedButton(onClick = onClose) { Text("Fechar") }
+                    OutlinedButton(onClick = { bridgeSessionKey = null; onClose() }) { Text("Fechar") }
                 }
                 Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)
                     .background(androidx.compose.ui.graphics.Color.Black)
@@ -261,7 +297,7 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
                             submit("input tap ${mapped.x} ${mapped.y}")
                         }
                     }, contentAlignment = Alignment.Center) {
-                    if (videoRequested && !videoFailed) {
+                    if ((videoRequested && !videoFailed) || bridgeSessionKey != null) {
                         AndroidView(
                             factory = { context ->
                                 SurfaceView(context).apply { holder.addCallback(videoCallback) }
@@ -280,6 +316,44 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
                     }
                 }
                 Text(if (videoPlaying) "Vídeo ao vivo pela rede local (H.264, sem áudio)." else status)
+                if (session != null) {
+                    if (!bridgeInstalled) {
+                        Button(onClick = onInstallBridge) { Text("Instalar módulo de espelhamento na TV") }
+                    } else {
+                        Button(
+                            enabled = !bridgeStarting && BridgeClient.privateIpv4(bridgeHost),
+                            onClick = {
+                                if (bridgeSessionKey != null) {
+                                    bridgeSessionKey = null
+                                    status = "Espelhamento encerrado no celular."
+                                } else {
+                                    bridgeStarting = true
+                                    scope.launch {
+                                        try {
+                                            val key = BridgeClient.newKey()
+                                            val command = "am start -n tv.cleanyour.bridge/.MirrorActivity --es session_key $key"
+                                            val result = withContext(Dispatchers.IO) {
+                                                session?.exec(ShellLine(command), runSpec)
+                                            }
+                                            if (result?.exit == 0 && !result.truncated) {
+                                                bridgeSessionKey = key
+                                                status = "Autorize o compartilhamento na tela da TV."
+                                            } else status = "Não foi possível abrir o módulo. Verifique sua instalação na TV."
+                                        } catch (e: CancellationException) {
+                                            throw e
+                                        } catch (_: Exception) {
+                                            status = "Falha ao iniciar o módulo. Verifique a conexão da TV."
+                                        } finally {
+                                            bridgeStarting = false
+                                        }
+                                    }
+                                }
+                            },
+                        ) {
+                            Text(if (bridgeSessionKey == null) "Espelhar pelo módulo da TV" else "Parar espelhamento")
+                        }
+                    }
+                }
                 Text(if (videoRequested && !videoFailed)
                     "Tentando transmissão contínua. Se este Chromecast não permitir, a prévia será mantida."
                     else "Prévia por capturas periódicas; não é vídeo contínuo.")
