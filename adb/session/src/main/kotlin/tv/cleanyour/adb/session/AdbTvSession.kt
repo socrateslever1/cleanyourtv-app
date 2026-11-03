@@ -47,6 +47,7 @@ import tv.cleanyour.core.session.SessionHold
 import tv.cleanyour.core.session.TvIdentity
 import tv.cleanyour.core.session.TvSession
 import tv.cleanyour.core.store.Clock
+import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
 import java.security.MessageDigest
@@ -282,6 +283,54 @@ class AdbTvSession internal constructor(
     override suspend fun exec(line: ShellLine, spec: ExecSpec): ExecResult {
         PmGuard.refusal(line.text)?.let { throw AdbException(AdbError.Policy.GuardFailed(0, it)) }
         return call(spec.retry) { conn -> Exec.run(conn, line, spec, clock) }
+    }
+
+    /**
+     * Reads one PNG frame directly from screencap stdout using shell v2 (binary
+     * clean), without writing a temporary file to the TV and pulling it back.
+     *
+     * This is an on-demand capture, NOT a video stream. A bounded allocation,
+     * total deadline, idle deadline and PNG signature check protect the phone
+     * from devices that send malformed or unbounded output. Returning null
+     * allows the caller to fall back to the older file-based capture method.
+     */
+    @OptIn(tv.cleanyour.core.model.RawShell::class)
+    suspend fun captureScreenPng(maxBytes: Int = 8 * 1024 * 1024): ByteArray? {
+        require(maxBytes in 1024..(16 * 1024 * 1024))
+        return call(RetryClass.IDEMPOTENT_READ) { conn ->
+            val stream = conn.openBounded(AdbService.ShellV2(ShellLine("screencap -p")), 3_000)
+            try {
+                bounded(10_000, "screencap-total") {
+                    val reader = AdbStreamReader(stream)
+                    val png = ByteArrayOutputStream(minOf(maxBytes, 256 * 1024))
+                    while (true) {
+                        when (val packet = bounded(6_000, "screencap-idle") { ShellV2.next(reader) }) {
+                            is ShellPacket.Stdout -> {
+                                if (packet.bytes.size > maxBytes - png.size()) return@bounded null
+                                png.write(packet.bytes)
+                            }
+                            is ShellPacket.Stderr -> Unit
+                            is ShellPacket.Exit -> {
+                                if (packet.code != 0) return@bounded null
+                                val bytes = png.toByteArray()
+                                return@bounded bytes.takeIf(::hasPngSignature)
+                            }
+                            null -> return@bounded null
+                        }
+                    }
+                    @Suppress("UNREACHABLE_CODE")
+                    null
+                }
+            } finally {
+                stream.close()
+            }
+        }
+    }
+
+    private fun hasPngSignature(bytes: ByteArray): Boolean {
+        if (bytes.size < 24) return false
+        val signature = byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)
+        return signature.indices.all { i -> bytes[i] == signature[i] }
     }
 
     // Lines of stdout, each cut at 8 KiB; output over stdoutCap fails the flow (a parser must never
