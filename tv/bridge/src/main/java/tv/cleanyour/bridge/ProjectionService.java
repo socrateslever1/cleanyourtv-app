@@ -52,12 +52,13 @@ public final class ProjectionService extends Service {
         String session = intent.getStringExtra("session_key");
         Intent grant = getProjectionData(intent);
         int resultCode = intent.getIntExtra("projection_result", 0);
+        if (active.get()) return START_NOT_STICKY;
         if (!BridgeProtocol.isValidHexKey(session) || grant == null ||
-            resultCode != android.app.Activity.RESULT_OK ||
-            !active.compareAndSet(false, true)) {
+            resultCode != android.app.Activity.RESULT_OK) {
             stopSelf();
             return START_NOT_STICKY;
         }
+        if (!active.compareAndSet(false, true)) return START_NOT_STICKY;
         try {
             startVisibleForeground();
             MediaProjectionManager manager = getSystemService(MediaProjectionManager.class);
