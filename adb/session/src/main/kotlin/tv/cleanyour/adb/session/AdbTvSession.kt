@@ -56,6 +56,16 @@ import java.util.concurrent.atomic.AtomicInteger
 import kotlin.coroutines.ContinuationInterceptor
 import kotlin.coroutines.CoroutineContext
 
+/**
+ * Fast PNG sanity check for binary ADB screen-capture output. Full image
+ * structure and dimensions are checked by BitmapFactory in the UI layer.
+ */
+internal fun validScreenPng(bytes: ByteArray): Boolean {
+    if (bytes.size < 24) return false
+    val signature = byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)
+    return signature.indices.all { i -> bytes[i] == signature[i] }
+}
+
 // How a session gets back to its TV.
 internal class Link(
     val socketFactory: SocketFactory,
@@ -313,7 +323,7 @@ class AdbTvSession internal constructor(
                             is ShellPacket.Exit -> {
                                 if (packet.code != 0) return@bounded null
                                 val bytes = png.toByteArray()
-                                return@bounded bytes.takeIf(::hasPngSignature)
+                                return@bounded bytes.takeIf(::validScreenPng)
                             }
                             null -> return@bounded null
                         }
@@ -325,12 +335,6 @@ class AdbTvSession internal constructor(
                 stream.close()
             }
         }
-    }
-
-    private fun hasPngSignature(bytes: ByteArray): Boolean {
-        if (bytes.size < 24) return false
-        val signature = byteArrayOf(137.toByte(), 80, 78, 71, 13, 10, 26, 10)
-        return signature.indices.all { i -> bytes[i] == signature[i] }
     }
 
     // Lines of stdout, each cut at 8 KiB; output over stdoutCap fails the flow (a parser must never
