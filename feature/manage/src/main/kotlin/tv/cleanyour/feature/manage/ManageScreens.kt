@@ -130,7 +130,7 @@ fun ManageScreen(state: ManageState, onIntent: (ManageIntent) -> Unit, modifier:
                 thumbnailDescription = msg(R.string.manage_thumbnail_cd, "tv" to tv.name),
                 modifier = Modifier.padding(top = 20.dp),
                 level = stringResource(if (tv.level == Level.CUSTOM) R.string.manage_level_custom else R.string.manage_level_simple),
-                onClick = { onIntent(ManageIntent.RefreshThumbnail) },
+                onClick = { onViewTv(tv.id) },
             )
             // The restore screen can undo changes and export an offline ZIP via SAF.
             if (tv.restorePointAtMs != null) {
@@ -187,8 +187,8 @@ fun ManageScreen(state: ManageState, onIntent: (ManageIntent) -> Unit, modifier:
                 ListRow(stringResource(R.string.manage_install_apk), subtitle = stringResource(R.string.manage_install_apk_note),
                     onClick = { onInstallApk(tv.id) })
                 ListDivider()
-                ListRow(stringResource(R.string.manage_view_tv),
-                    subtitle = stringResource(R.string.manage_view_tv_note),
+                ListRow(stringResource(R.string.manage_bridge_title),
+                    subtitle = stringResource(R.string.manage_bridge_note),
                     onClick = { onViewTv(tv.id) })
                 ListDivider()
                 ListRow(stringResource(R.string.manage_tv_tools), subtitle = stringResource(R.string.manage_tv_tools_note),
