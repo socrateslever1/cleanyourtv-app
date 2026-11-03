@@ -30,5 +30,7 @@ class PairingStepsTest {
         rule.onNodeWithText("adb devices -l", substring = true).assertExists()
         rule.onNodeWithText("The PC pairing does not authorize the phone", substring = true).assertExists()
         rule.onNodeWithText("legacy ADB without the transport encryption", substring = true).assertExists()
+        rule.onNodeWithText("adb mdns services", substring = true).assertExists()
+        rule.onNodeWithText("not the TLS port", substring = true).assertExists()
     }
 }
