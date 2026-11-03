@@ -119,6 +119,28 @@ fun ManageScreen(state: ManageState, onIntent: (ManageIntent) -> Unit, modifier:
             )
             if (state.reconnecting) LiveLine(stringResource(R.string.manage_reconnecting))
         }
+        // A tela inicial apresenta primeiro os dispositivos, sem abrir a TV automaticamente.
+        // Selecionar outro aparelho apenas atualiza o contexto; a visualização é opcional.
+        val others = state.cards.filter { it.id != tv?.id }
+        ListGroup(Modifier.padding(top = 12.dp, bottom = 16.dp)) {
+            others.forEach { other ->
+                ListRow(other.name, subtitle = other.room, onClick = { onIntent(ManageIntent.Select(other.id)) })
+                ListDivider()
+            }
+            LinkRow(stringResource(R.string.manage_add_tv), { onIntent(ManageIntent.SetUpAnother) }, chevron = false, minHeight = 56.dp)
+        }
+        if (tv != null) {
+            ListGroup(Modifier.padding(top = 12.dp)) {
+                ListRow(stringResource(R.string.manage_install_apk), subtitle = stringResource(R.string.manage_install_apk_note),
+                    onClick = { onInstallApk(tv.id) })
+                ListDivider()
+                ListRow(stringResource(R.string.manage_bridge_title), subtitle = stringResource(R.string.manage_bridge_note),
+                    onClick = { onViewTv(tv.id) })
+                ListDivider()
+                ListRow(stringResource(R.string.manage_tv_tools), subtitle = stringResource(R.string.manage_tv_tools_note),
+                    onClick = { onTvTools(tv.id) })
+            }
+        }
         if (tv != null) {
             val room = tv.room
             val stateWord = stringResource(if (tv.clean) R.string.manage_state_clean else R.string.manage_state_original)
@@ -197,14 +219,7 @@ fun ManageScreen(state: ManageState, onIntent: (ManageIntent) -> Unit, modifier:
                 ListRow(stringResource(R.string.manage_row_tvsettings), onClick = { onIntent(ManageIntent.Open(ManageSection.TV_SETTINGS)) })
             }
         }
-        val others = state.cards.filter { it.id != tv?.id }
-        ListGroup(Modifier.padding(top = 12.dp, bottom = 16.dp)) {
-            others.forEach { other ->
-                ListRow(other.name, subtitle = other.room, onClick = { onIntent(ManageIntent.Select(other.id)) })
-                ListDivider()
-            }
-            LinkRow(stringResource(R.string.manage_add_tv), { onIntent(ManageIntent.SetUpAnother) }, chevron = false, minHeight = 56.dp)
-        }
+
     }
 }
 
