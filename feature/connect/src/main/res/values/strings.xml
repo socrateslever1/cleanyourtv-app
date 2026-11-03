@@ -150,16 +150,20 @@
     <string name="identity_yes">Yes, that\'s mine</string>
     <string name="identity_no">No</string>
 
-    <!-- S2x Pairing needed (D9). The three commands are code and are not translated. -->
-    <string name="pairing_title">This TV needs a pairing code</string>
-    <string name="pairing_body">This version can\'t type pairing codes yet; the next one will. If you have a computer, pair once with adb and run adb tcpip 5555, then come back; the phone takes it from there.</string>
-    <string name="pairing_show_steps">Show me the computer steps</string>
-    <string name="pairing_steps_title">Pair once from a computer</string>
-    <string name="pairing_steps_intro">On the TV, open Developer options > Wireless debugging > Pair device with pairing code. Then run these three commands on the computer, one at a time.</string>
+    <!-- S2x: Modern wireless ADB pairs with TLS, while this version of the phone
+         client only supports authenticated classic ADB on port 5555. -->
+    <string name="pairing_title">Pair the TV before connecting</string>
+    <string name="pairing_body">This version cannot enter the wireless pairing code directly. Use a computer to pair, switch the TV to TCP port 5555 and reconnect. The phone must then be authorized separately on the TV.</string>
+    <string name="pairing_show_steps">Show the computer connection steps</string>
+    <string name="pairing_steps_title">Connect the TV with ADB</string>
+    <string name="pairing_steps_intro">On the TV, enable Wireless debugging and open Pair device with pairing code. On the computer, use its pairing port for the first command. Go back to the main Wireless debugging screen to find the DIFFERENT connection port for the second command. Run each command in order:</string>
     <string name="pairing_steps_cmd_pair" translatable="false">adb pair ADDRESS:PAIR_PORT</string>
     <string name="pairing_steps_cmd_connect" translatable="false">adb connect ADDRESS:CONNECT_PORT</string>
     <string name="pairing_steps_cmd_tcpip" translatable="false">adb -s ADDRESS:CONNECT_PORT tcpip 5555</string>
-    <string name="pairing_steps_note">Use the address, ports and six-digit code the TV shows. When the last command has run, come back to this app. After the TV restarts, run the last two commands again with the port the TV shows then; there is no need to pair again.</string>
+    <string name="pairing_steps_cmd_final_connect" translatable="false">adb connect ADDRESS:5555</string>
+    <string name="pairing_steps_cmd_verify" translatable="false">adb devices -l</string>
+    <string name="pairing_steps_note">The first command asks for the six-digit code shown on the TV. If more than one device is listed, the third command must retain the -s address. After switching to port 5555, reconnect and check for the status device. Return to CleanYourTV on your phone, connect to the TV address and authorize this phone on the TV if prompted. The PC pairing does not authorize the phone.</string>
+    <string name="pairing_steps_safety">Security: port 5555 uses legacy ADB without the transport encryption of wireless debugging. Use it only on a trusted local network, never expose it to the internet, and turn debugging off after use. A TV restart or disabling debugging may reset the port; repeat the connection steps if needed.</string>
 
     <!-- Stop: TV not found (UX 4.1, no Wi-Fi name, D19) -->
     <string name="stop_tv_not_found_title">No TV found yet</string>
