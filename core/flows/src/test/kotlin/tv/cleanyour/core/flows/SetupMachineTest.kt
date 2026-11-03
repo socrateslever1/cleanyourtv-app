@@ -4,6 +4,7 @@ import app.cash.turbine.test
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.runTest
 import tv.cleanyour.core.discovery.DiscoveryEvent
+import tv.cleanyour.core.discovery.DiscoverySource
 import tv.cleanyour.core.discovery.FoundTv
 import tv.cleanyour.core.discovery.ServiceRef
 import tv.cleanyour.core.engine.JournalRecord
@@ -83,6 +84,30 @@ class SetupMachineTest {
         assertTrue(w.looking)
         settle(8_000)
         assertFalse(assertIs<SetupState.Welcome>(m.state.value).looking)
+    }
+
+    @Test fun pairingOnlyTvAutoAdvancesWhenAdbTcpServiceAppears() = runTest(timeout = 30.seconds) {
+        val h = Harness()
+        val m = h.setup(backgroundScope)
+        val waiting = miTvFound.copy(
+            port5555Open = false,
+            sources = miTvFound.sources + DiscoverySource.ADB_TLS_CONNECT,
+            connectService = ServiceRef("adb-tls-connect", HOST, 34701),
+            pairingService = ServiceRef("adb-tls-pairing", HOST, 46801),
+        )
+        h.discovery.emit(found(waiting))
+        settle()
+        m.dispatch(SetupIntent.Start)
+        settle()
+        assertIs<SetupState.PairingNeeded>(m.state.value)
+        assertEquals(1, h.discovery.activeCollectors)
+
+        h.discovery.open5555[HOST] = true
+        h.discovery.emit(DiscoveryEvent.Updated(waiting.copy(port5555Open = true)))
+        settle()
+        assertFalse(m.state.value is SetupState.PairingNeeded,
+            "Opening ADB port 5555 must dismiss the manual pairing screen automatically")
+        assertEquals(0, h.discovery.activeCollectors)
     }
 
     @Test fun twoTvsOpenThePickerAndPickingOneOpensTheDoor() = runTest(timeout = 30.seconds) {
