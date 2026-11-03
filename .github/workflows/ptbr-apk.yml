@@ -2,7 +2,7 @@ name: APK em português brasileiro (Chromecast 4K)
 on:
   push:
     branches: [main]
-    paths: ['app/**', 'feature/**', 'ui/**', 'core/**', 'adb/**', 'android/**', 'build-logic/**', 'gradle/**', 'scripts/localize_ptbr.py', '.github/workflows/ptbr-apk.yml']
+    paths: ['app/**', 'feature/**', 'ui/**', 'core/**', 'adb/**', 'android/**', 'tv/bridge/**', 'settings.gradle.kts', 'build-logic/**', 'gradle/**', 'scripts/localize_ptbr.py', '.github/workflows/ptbr-apk.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -90,7 +90,18 @@ jobs:
           set -euo pipefail
           APK="$(find app/build/outputs/apk/full/release -type f -name '*.apk' -print -quit)"
           test -s "$APK"
+          BRIDGE="$(find tv/bridge/build/outputs/apk/release -type f -name '*.apk' -print -quit)"
+          test -s "$BRIDGE"
+          unzip -Z1 "$APK" | grep -Fxq 'assets/bridge/CleanYourTVBridge.apk' || {
+            echo "::error::O APK do telefone não contém o módulo de espelhamento"; exit 1;
+          }
           TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n1)"
+          "$TOOLS/apksigner" verify --print-certs "$BRIDGE" | tee bridge-certificate.txt
+          BRIDGE_CERT="$(sed -nE 's/^.*certificate SHA-256 digest: ([[:xdigit:]]{64}).*$/\1/p' bridge-certificate.txt | head -1 | tr '[:upper:]' '[:lower:]')"
+          [ -n "$BRIDGE_CERT" ] && [ "$BRIDGE_CERT" = "$CLEAN_TV_CERT" ] || {
+            echo "::error::Módulo Bridge com assinatura diferente da chave permanente"; exit 1;
+          }
+          "$TOOLS/aapt" dump badging "$BRIDGE" | grep -Fq "package: name='tv.cleanyour.bridge'"
           "$TOOLS/apksigner" verify --verbose --print-certs "$APK" | tee apk-certificate.txt
           CERT="$(sed -nE 's/^.*certificate SHA-256 digest: ([[:xdigit:]]{64}).*$/\1/p' apk-certificate.txt | head -1 | tr '[:upper:]' '[:lower:]')"
           [ -n "$CERT" ] && [ "$CERT" = "$CLEAN_TV_CERT" ] || { echo "::error::Certificado no APK inválido"; exit 1; }
@@ -115,6 +126,7 @@ jobs:
           path: |
             app/build/outputs/apk/full/release/*.apk
             apk-certificate.txt
+            bridge-certificate.txt
             build-information.txt
             ptbr-cobertura.json
           retention-days: 30
