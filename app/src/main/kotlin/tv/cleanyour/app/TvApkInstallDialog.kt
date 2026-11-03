@@ -55,11 +55,14 @@ internal fun TvApkInstallDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit
         )
     } else if (prepared != null) {
         val apk = prepared!!
+        val targetName = graph.tvs.tvs.value.firstOrNull { it.id == tvId }?.nickname
+            ?.takeIf { it.isNotBlank() }
+            ?: stringResource(R.string.tv_apk_unknown_tv)
         AlertDialog(
             onDismissRequest = { apk.discard(); onClose() },
             title = { Text(stringResource(R.string.tv_apk_confirm_title)) },
             text = { Text(stringResource(R.string.tv_apk_confirm_body,
-                apk.packageName, apk.version, apk.size / 1048576L)) },
+                apk.packageName, apk.version, apk.size / 1048576L, targetName)) },
             confirmButton = {
                 TextButton(onClick = {
                     prepared = null
