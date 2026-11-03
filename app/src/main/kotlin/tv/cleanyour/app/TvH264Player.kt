@@ -27,6 +27,21 @@ internal object TvH264Player {
         tv: AdbTvSession,
         surface: Surface,
         onFirstFrame: () -> Unit,
+    ): Boolean = playSource(surface, onFirstFrame) { emit -> tv.streamScreenH264(emit) }
+
+    suspend fun playBridge(
+        ip: String,
+        sessionKey: String,
+        surface: Surface,
+        onFirstFrame: () -> Unit,
+    ): Boolean = playSource(surface, onFirstFrame) { emit ->
+        BridgeClient.receive(ip, sessionKey, emit)
+    }
+
+    private suspend fun playSource(
+        surface: Surface,
+        onFirstFrame: () -> Unit,
+        source: suspend (suspend (ByteArray) -> Unit) -> Boolean,
     ): Boolean = withContext(Dispatchers.Default) {
         var decoder: MediaCodec? = null
         try {
@@ -84,7 +99,7 @@ internal object TvH264Player {
                 if (receivedFrames > 0) onFirstFrame()
             }
 
-            val completed = tv.streamScreenH264 { chunk ->
+            val completed = source { chunk ->
                 packets.accept(chunk).forEach(::queuePicture)
             }
             packets.finish().forEach(::queuePicture)
