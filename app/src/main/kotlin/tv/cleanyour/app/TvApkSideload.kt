@@ -75,7 +75,7 @@ internal object TvApkSideload {
         withContext(Dispatchers.IO) {
             try {
                 val session = graph.access.live(tvId)
-                    ?: return@withContext "TV desconectada. Reconecte a TCL antes de instalar."
+                    ?: return@withContext "TV desconectada. Reconecte o dispositivo escolhido antes de instalar."
                 if (session.identity.sdk < apk.minSdk)
                     return@withContext "O APK exige Android ${apk.minSdk}, superior ao Android da TV (${session.identity.sdk})."
                 val ref = BlobRef(Sha256(apk.sha256), apk.size, apk.file.absolutePath)
