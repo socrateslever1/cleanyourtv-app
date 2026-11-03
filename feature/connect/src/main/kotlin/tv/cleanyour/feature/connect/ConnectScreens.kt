@@ -490,10 +490,21 @@ internal fun PairingStepsContent() {
     SheetHeader(stringResource(R.string.pairing_steps_title))
     Body(stringResource(R.string.pairing_steps_intro), Modifier.padding(top = 12.dp))
     MonospaceBlock(
-        listOf(stringResource(R.string.pairing_steps_cmd_pair), stringResource(R.string.pairing_steps_cmd_connect), stringResource(R.string.pairing_steps_cmd_tcpip)),
+        listOf(
+            stringResource(R.string.pairing_steps_cmd_pair),
+            stringResource(R.string.pairing_steps_cmd_connect),
+            stringResource(R.string.pairing_steps_cmd_tcpip),
+            stringResource(R.string.pairing_steps_cmd_final_connect),
+            stringResource(R.string.pairing_steps_cmd_verify),
+        ),
         Modifier.padding(top = 16.dp),
     )
     Body(stringResource(R.string.pairing_steps_note), Modifier.padding(top = 16.dp))
+    Banner(
+        stringResource(R.string.pairing_steps_safety),
+        BannerTone.WARNING,
+        Modifier.padding(top = 16.dp),
+    )
 }
 
 // S1c: numeric field, RFC 1918 only.
