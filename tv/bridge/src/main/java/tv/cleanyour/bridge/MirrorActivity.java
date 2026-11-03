@@ -3,6 +3,7 @@ package tv.cleanyour.bridge;
 import android.app.Activity;
 import android.content.Intent;
 import android.media.projection.MediaProjectionManager;
+import android.media.projection.MediaProjectionConfig;
 import android.os.Bundle;
 import android.os.Build;
 import android.view.Gravity;
@@ -43,7 +44,10 @@ public final class MirrorActivity extends Activity {
             MediaProjectionManager manager = getSystemService(MediaProjectionManager.class);
             if (manager == null) { finish(); return; }
             start.setEnabled(false);
-            startActivityForResult(manager.createScreenCaptureIntent(), CAPTURE);
+            Intent request = Build.VERSION.SDK_INT >= 34
+                ? manager.createScreenCaptureIntent(MediaProjectionConfig.createConfigForDefaultDisplay())
+                : manager.createScreenCaptureIntent();
+            startActivityForResult(request, CAPTURE);
         });
         root.addView(start);
         Button cancel = new Button(this);
