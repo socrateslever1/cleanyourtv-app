@@ -507,6 +507,7 @@ internal fun PairingStepsContent() {
         Modifier.padding(top = 16.dp),
     )
     Body(stringResource(R.string.pairing_steps_note), Modifier.padding(top = 16.dp))
+    Body(stringResource(R.string.pairing_steps_ports), Modifier.padding(top = 12.dp))
     Banner(
         stringResource(R.string.pairing_steps_safety),
         BannerTone.WARNING,
