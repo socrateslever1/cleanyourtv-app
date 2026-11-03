@@ -36,6 +36,7 @@ internal object BridgeInstaller {
     }
 
     @Suppress("DEPRECATION")
+    @OptIn(RawShell::class)
     suspend fun install(context: Context, graph: AppGraph, id: TvId,
                         progress: (Int) -> Unit): Result = withContext(Dispatchers.IO) {
         val session = graph.access.live(id)
