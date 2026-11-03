@@ -95,7 +95,7 @@ public final class ProjectionService extends Service {
             PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         Notification.Builder b = Build.VERSION.SDK_INT >= 26
             ? new Notification.Builder(this, CHANNEL) : new Notification.Builder(this);
-        Notification notification = b.setSmallIcon(android.R.drawable.presence_video_online)
+        Notification notification = b.setSmallIcon(android.R.drawable.ic_menu_view)
             .setContentTitle("CleanYourTV: compartilhando tela")
             .setContentText("A imagem está disponível somente para o celular autorizado.")
             .setOngoing(true)
