@@ -82,9 +82,17 @@ class NsdDiscovery(
                 )
                 byHost[host] = tv
                 publish(tv, old == null)
-                if (old?.port5555Open == null) {
+                // When adb tcpip 5555 starts, adbd advertises a fresh
+                // _adb._tcp mDNS service. Reprobe even if an earlier Cast/TLS
+                // announcement already cached port5555Open=false; otherwise
+                // the pairing tutorial never notices a newly opened port.
+                if (old?.port5555Open == null || source == DiscoverySource.ADB_MDNS) {
                     val open = probe5555(host)
-                    byHost[host]?.let { cur -> byHost[host] = cur.copy(port5555Open = open).also { publish(it, false) } }
+                    byHost[host]?.let { cur ->
+                        if (cur.port5555Open != open) {
+                            byHost[host] = cur.copy(port5555Open = open).also { publish(it, false) }
+                        }
+                    }
                 }
             }
         }
