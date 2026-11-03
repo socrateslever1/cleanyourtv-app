@@ -2,6 +2,9 @@ package tv.cleanyour.app
 
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.view.SurfaceHolder
+import android.view.SurfaceView
+import android.view.Surface
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.gestures.detectTapGestures
@@ -35,12 +38,14 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.launch
@@ -92,6 +97,19 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
     var displaySize by remember { mutableStateOf(IntSize.Zero) }
     var input by remember { mutableStateOf("") }
     var retry by remember(tvId) { mutableStateOf(0) }
+    var videoRequested by remember(tvId) { mutableStateOf(true) }
+    var videoFailed by remember(tvId) { mutableStateOf(false) }
+    var videoPlaying by remember(tvId) { mutableStateOf(false) }
+    var videoSurface by remember(tvId) { mutableStateOf<Surface?>(null) }
+    val videoCallback = remember(tvId) {
+        object : SurfaceHolder.Callback {
+            override fun surfaceCreated(holder: SurfaceHolder) { videoSurface = holder.surface }
+            override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {
+                videoSurface = holder.surface
+            }
+            override fun surfaceDestroyed(holder: SurfaceHolder) { videoSurface = null }
+        }
+    }
     // One pending refresh at most: remote-control bursts must not queue dozens
     // of expensive PNG captures or starve interactive ADB commands.
     val refreshRequests = remember(tvId) { Channel<Unit>(Channel.CONFLATED) }
@@ -100,6 +118,41 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
     }
     val runSpec = remember { ExecSpec(timeoutMs = 7000, idleTimeoutMs = 5000, stdoutCap = 4096,
         stderrCap = 1024, retry = RetryClass.NEVER) }
+
+    // Prefer actual H.264 video on Chromecast/Google TV that permits screenrecord.
+    // Each recording ends at 150 s and is restarted; incompatible firmware
+    // automatically falls back to the safer PNG preview without data loss.
+    LaunchedEffect(tvId, session, videoSurface, videoRequested, videoFailed) {
+        val tv = session as? AdbTvSession ?: return@LaunchedEffect
+        val surface = videoSurface?.takeIf { it.isValid } ?: return@LaunchedEffect
+        if (!videoRequested || videoFailed) return@LaunchedEffect
+        val hold = tv.hold()
+        try {
+            var failures = 0
+            while (isActive && surface.isValid) {
+                var displayed = false
+                val worked = TvH264Player.play(tv, surface) {
+                    displayed = true
+                    videoPlaying = true
+                }
+                videoPlaying = false
+                if (worked) {
+                    failures = 0
+                    delay(250)
+                } else {
+                    failures++
+                    if (!displayed || failures >= 3) {
+                        videoFailed = true
+                        break
+                    }
+                    delay(1200)
+                }
+            }
+        } finally {
+            videoPlaying = false
+            hold.close()
+        }
+    }
 
     LaunchedEffect(tvId, retry) {
         val access = graph.access.session(tvId)
@@ -119,6 +172,12 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
             var errors = 0
             var directCaptureAvailable = connected is AdbTvSession
             while (isActive) {
+                // The H.264 decoder owns the screen while streaming.
+                // Avoid competing ADB screenshot work and excessive TV CPU use.
+                if (videoPlaying) {
+                    withTimeoutOrNull(1_200) { refreshRequests.receive() }
+                    continue
+                }
                 val next = try {
                     withContext(Dispatchers.IO) {
                         // Fast path: read binary PNG directly from ADB shell v2.
@@ -194,7 +253,7 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
                 Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f)
                     .background(androidx.compose.ui.graphics.Color.Black)
                     .onSizeChanged { displaySize = it }
-                    .pointerInput(frame?.originalWidth, frame?.originalHeight, displaySize) {
+                    .pointerInput(frame?.originalWidth, frame?.originalHeight, displaySize, videoPlaying) {
                         detectTapGestures { pos ->
                             val img = frame ?: return@detectTapGestures
                             val mapped = mapRemoteTouch(pos.x, pos.y, displaySize.width, displaySize.height,
@@ -202,14 +261,40 @@ internal fun TvViewerDialog(graph: AppGraph, tvId: TvId, onClose: () -> Unit) {
                             submit("input tap ${mapped.x} ${mapped.y}")
                         }
                     }, contentAlignment = Alignment.Center) {
-                    frame?.let { Image(it.bitmap.asImageBitmap(), "Imagem atual da TV", Modifier.fillMaxWidth(),
-                        contentScale = ContentScale.Fit) }
-                    if (frame == null) Text("Aguardando imagem da TV", color = androidx.compose.ui.graphics.Color.White)
+                    if (videoRequested && !videoFailed) {
+                        AndroidView(
+                            factory = { context ->
+                                SurfaceView(context).apply { holder.addCallback(videoCallback) }
+                            },
+                            modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
+                            onRelease = { view ->
+                                view.holder.removeCallback(videoCallback)
+                                videoSurface = null
+                            },
+                        )
+                    }
+                    if (!videoPlaying || videoFailed || !videoRequested) {
+                        frame?.let { Image(it.bitmap.asImageBitmap(), "Imagem atual da TV", Modifier.fillMaxWidth(),
+                            contentScale = ContentScale.Fit) }
+                        if (frame == null) Text("Aguardando imagem da TV", color = androidx.compose.ui.graphics.Color.White)
+                    }
                 }
-                Text(status)
-                Text("Prévia por capturas periódicas, não transmissão contínua. A imagem é atualizada após cada comando enviado.")
-                OutlinedButton(onClick = { refreshRequests.trySend(Unit) }, enabled = session != null) {
-                    Text("Atualizar imagem agora")
+                Text(if (videoPlaying) "Vídeo ao vivo pela rede local (H.264, sem áudio)." else status)
+                Text(if (videoRequested && !videoFailed)
+                    "Tentando transmissão contínua. Se este Chromecast não permitir, a prévia será mantida."
+                    else "Prévia por capturas periódicas; não é vídeo contínuo.")
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = {
+                        videoRequested = !videoRequested
+                        videoFailed = false
+                        videoPlaying = false
+                    }, enabled = session != null) {
+                        Text(if (videoRequested) "Usar prévia" else "Tentar vídeo ao vivo")
+                    }
+                    OutlinedButton(onClick = { refreshRequests.trySend(Unit) },
+                        enabled = session != null && !videoPlaying) {
+                        Text("Atualizar imagem")
+                    }
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     OutlinedButton(onClick = { press(RemoteKey.HOME) }, enabled = session != null) { Text("Início") }
