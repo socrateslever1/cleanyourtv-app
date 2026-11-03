@@ -55,6 +55,22 @@ android {
     }
 }
 
+// The TV Bridge is packaged as a separate, permanently signed APK in the
+// official full flavour. It never shares the phone application's identity.
+val bundleBridgeApk by tasks.registering(Copy::class) {
+    dependsOn(":tv:bridge:assembleRelease")
+    from(project(":tv:bridge").layout.buildDirectory.dir("outputs/apk/release")) {
+        include("*.apk")
+        rename { "CleanYourTVBridge.apk" }
+    }
+    into(layout.buildDirectory.dir("generated/bridge-assets/bridge"))
+}
+
+android.sourceSets.getByName("full").assets.srcDir(layout.buildDirectory.dir("generated/bridge-assets"))
+tasks.matching { it.name == "mergeFullReleaseAssets" }.configureEach {
+    dependsOn(bundleBridgeApk)
+}
+
 dependencies {
     implementation(project(":feature:connect"))
     implementation(project(":feature:setup"))
