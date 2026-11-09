@@ -24,3 +24,6 @@ __pycache__/
 # local release signing (build-logic ReleaseSigning): never committed
 keystore.properties
 *.jks.properties
+
+# APKs de teste do Espelho TV gerados localmente (os oficiais saem do GitHub Actions)
+apks-espelho-tv/
