@@ -1,0 +1,33 @@
+name: Espelho TV (APKs)
+
+on:
+  push:
+    paths:
+      - "espelho-tv/**"
+      - ".github/workflows/espelho-tv.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apks:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: espelho-tv
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: android-actions/setup-android@v3
+      - name: Testes do protocolo e APKs
+        run: ./gradlew --no-daemon :protocolo:test assembleRelease
+      - uses: actions/upload-artifact@v4
+        with:
+          name: espelho-tv-apks
+          path: |
+            espelho-tv/tv/build/outputs/apk/release/tv-release.apk
+            espelho-tv/celular/build/outputs/apk/release/celular-release.apk

@@ -1,6 +1,6 @@
 # App independente: TV no celular + celular como controle remoto
 
-Estado: **proposta de design (2026-11-09)**. Nada implementado ainda fora do que já existe em `tv/bridge`.
+Estado: **implementado em `espelho-tv/` (2026-11-09); compila e passa nos testes do protocolo, falta teste no Chromecast real.**
 
 ## Objetivo
 
